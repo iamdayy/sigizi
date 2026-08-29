@@ -23,64 +23,96 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup, authMW gin.HandlerFunc
 	distGroup := router.Group("")
 	distGroup.Use(authMW)
 	{
-		// Schools
-		distGroup.GET("/schools", h.ListSchools)
-		distGroup.POST("/schools", middleware.RequireRole(models.RoleAdmin, models.RoleFinance), h.CreateSchool)
-		distGroup.GET("/schools/:id", h.GetSchool)
+		// Distribution Points
+		distGroup.GET("/distribution-points", h.ListDistributionPoints)
+		distGroup.POST("/distribution-points", middleware.RequireRole(models.RoleAdmin, models.RoleFinance, models.RoleHeadSPPG), h.CreateDistributionPoint)
+		distGroup.GET("/distribution-points/:id", h.GetDistributionPoint)
+		distGroup.PUT("/distribution-points/:id", middleware.RequireRole(models.RoleAdmin, models.RoleFinance, models.RoleHeadSPPG), h.UpdateDistributionPoint)
+
+		// Legacy aliases for backward compatibility
+		distGroup.GET("/schools", h.ListDistributionPoints)
+		distGroup.POST("/schools", middleware.RequireRole(models.RoleAdmin, models.RoleFinance, models.RoleHeadSPPG), h.CreateDistributionPoint)
+		distGroup.GET("/schools/:id", h.GetDistributionPoint)
 
 		// Distributions
 		distGroup.GET("/distributions", h.ListDistributions)
-		distGroup.POST("/distributions", middleware.RequireRole(models.RoleAdmin, models.RoleWarehouse, models.RoleFinance), h.CreateDistribution)
-		distGroup.PATCH("/distributions/:id/status", middleware.RequireRole(models.RoleAdmin, models.RoleWarehouse), h.UpdateDistributionStatus)
+		distGroup.POST("/distributions", middleware.RequireRole(models.RoleAdmin, models.RoleWarehouse, models.RoleFinance, models.RoleHeadSPPG), h.CreateDistribution)
+		distGroup.GET("/distributions/:id", h.GetDistribution)
+		distGroup.PATCH("/distributions/:id/status", middleware.RequireRole(models.RoleAdmin, models.RoleWarehouse, models.RoleDriver, models.RoleHeadSPPG), h.UpdateDistributionStatus)
 
 		// BAST Generator
 		distGroup.GET("/bast/preview", h.PreviewBAST)
-		distGroup.POST("/bast/generate", middleware.RequireRole(models.RoleAdmin, models.RoleFinance), h.GenerateBAST)
+		distGroup.POST("/bast/generate", middleware.RequireRole(models.RoleAdmin, models.RoleFinance, models.RoleHeadSPPG), h.GenerateBAST)
 		distGroup.GET("/bast/documents", h.ListBASTDocuments)
 	}
 }
 
-func (h *Handler) ListSchools(c *gin.Context) {
-	schools, err := h.service.ListSchools(c.Request.Context())
+func (h *Handler) ListDistributionPoints(c *gin.Context) {
+	dpType := c.Query("type")
+	points, err := h.service.ListDistributionPoints(c.Request.Context(), dpType)
 	if err != nil {
-		pkg.Error(c, http.StatusInternalServerError, "Failed to retrieve schools", err)
+		pkg.Error(c, http.StatusInternalServerError, "Failed to retrieve distribution points", err)
 		return
 	}
-	pkg.Success(c, http.StatusOK, "Schools retrieved", schools)
+	pkg.Success(c, http.StatusOK, "Distribution points retrieved", points)
 }
 
-func (h *Handler) CreateSchool(c *gin.Context) {
-	var req CreateSchoolRequest
+func (h *Handler) CreateDistributionPoint(c *gin.Context) {
+	var req CreateDistributionPointRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		pkg.Error(c, http.StatusBadRequest, "Invalid school request", err)
+		pkg.Error(c, http.StatusBadRequest, "Invalid distribution point request", err)
 		return
 	}
 
 	userID, _ := c.Get("UserID")
-	school, err := h.service.CreateSchool(c.Request.Context(), &req, userID.(uuid.UUID))
+	dp, err := h.service.CreateDistributionPoint(c.Request.Context(), &req, userID.(uuid.UUID))
 	if err != nil {
 		pkg.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	pkg.Success(c, http.StatusCreated, "School registered successfully", school)
+	pkg.Success(c, http.StatusCreated, "Distribution point registered successfully", dp)
 }
 
-func (h *Handler) GetSchool(c *gin.Context) {
+func (h *Handler) GetDistributionPoint(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := uuid.Parse(idParam)
 	if err != nil {
-		pkg.Error(c, http.StatusBadRequest, "Invalid school ID", err)
+		pkg.Error(c, http.StatusBadRequest, "Invalid distribution point ID", err)
 		return
 	}
 
-	school, err := h.service.GetSchool(c.Request.Context(), id)
+	dp, err := h.service.GetDistributionPoint(c.Request.Context(), id)
 	if err != nil {
-		pkg.Error(c, http.StatusNotFound, "School not found", err)
+		pkg.Error(c, http.StatusNotFound, "Distribution point not found", err)
 		return
 	}
 
-	pkg.Success(c, http.StatusOK, "School details retrieved", school)
+	pkg.Success(c, http.StatusOK, "Distribution point details retrieved", dp)
+}
+
+func (h *Handler) UpdateDistributionPoint(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		pkg.Error(c, http.StatusBadRequest, "Invalid distribution point ID", err)
+		return
+	}
+
+	var req UpdateDistributionPointRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		pkg.Error(c, http.StatusBadRequest, "Invalid update request", err)
+		return
+	}
+
+	userID, _ := c.Get("UserID")
+	dp, err := h.service.UpdateDistributionPoint(c.Request.Context(), id, &req, userID.(uuid.UUID))
+	if err != nil {
+		pkg.Error(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	pkg.Success(c, http.StatusOK, "Distribution point updated successfully", dp)
 }
 
 func (h *Handler) ListDistributions(c *gin.Context) {
@@ -93,6 +125,23 @@ func (h *Handler) ListDistributions(c *gin.Context) {
 		return
 	}
 	pkg.Success(c, http.StatusOK, "Distributions retrieved", dists)
+}
+
+func (h *Handler) GetDistribution(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		pkg.Error(c, http.StatusBadRequest, "Invalid distribution ID", err)
+		return
+	}
+
+	dist, err := h.service.GetDistribution(c.Request.Context(), id)
+	if err != nil {
+		pkg.Error(c, http.StatusNotFound, "Distribution not found", err)
+		return
+	}
+
+	pkg.Success(c, http.StatusOK, "Distribution details retrieved", dist)
 }
 
 func (h *Handler) CreateDistribution(c *gin.Context) {
@@ -137,22 +186,25 @@ func (h *Handler) UpdateDistributionStatus(c *gin.Context) {
 }
 
 func (h *Handler) PreviewBAST(c *gin.Context) {
-	schoolIDStr := c.Query("school_id")
+	dpIDStr := c.Query("distribution_point_id")
+	if dpIDStr == "" {
+		dpIDStr = c.Query("school_id") // legacy fallback
+	}
 	periodStart := c.Query("period_start")
 	periodEnd := c.Query("period_end")
 
-	if schoolIDStr == "" || periodStart == "" || periodEnd == "" {
-		pkg.Error(c, http.StatusBadRequest, "school_id, period_start, and period_end are required", nil)
+	if dpIDStr == "" || periodStart == "" || periodEnd == "" {
+		pkg.Error(c, http.StatusBadRequest, "distribution_point_id, period_start, and period_end are required", nil)
 		return
 	}
 
-	schoolID, err := uuid.Parse(schoolIDStr)
+	dpID, err := uuid.Parse(dpIDStr)
 	if err != nil {
-		pkg.Error(c, http.StatusBadRequest, "Invalid school_id format", err)
+		pkg.Error(c, http.StatusBadRequest, "Invalid distribution_point_id format", err)
 		return
 	}
 
-	preview, err := h.service.PreviewBAST(c.Request.Context(), schoolID, periodStart, periodEnd)
+	preview, err := h.service.PreviewBAST(c.Request.Context(), dpID, periodStart, periodEnd)
 	if err != nil {
 		pkg.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return

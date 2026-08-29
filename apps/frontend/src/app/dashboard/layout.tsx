@@ -6,7 +6,7 @@ import TopBar from '@/components/layout/TopBar';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute>
-      <div className="flex min-h-screen bg-slate-950 text-slate-100">
+      <div className="flex min-h-screen bg-brand-bg text-brand-dark">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar />

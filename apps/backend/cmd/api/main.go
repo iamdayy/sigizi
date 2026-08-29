@@ -17,6 +17,9 @@ import (
 	"github.com/daydev/mbg-system/backend/internal/modules/finance"
 	"github.com/daydev/mbg-system/backend/internal/modules/iam"
 	"github.com/daydev/mbg-system/backend/internal/modules/inventory"
+	"github.com/daydev/mbg-system/backend/internal/modules/menu"
+	"github.com/daydev/mbg-system/backend/internal/modules/qc"
+	"github.com/daydev/mbg-system/backend/internal/modules/reporting"
 	"github.com/daydev/mbg-system/backend/internal/pkg"
 	"github.com/daydev/mbg-system/backend/internal/scheduler"
 	"github.com/daydev/mbg-system/backend/internal/storage"
@@ -25,8 +28,8 @@ import (
 
 func main() {
 	log.Println("=================================================================")
-	log.Println("  Makan Bergizi Gratis (MBG) - SPPG Logistics & Financial System")
-	log.Println("  Production Backend Service v1.0.0 (Go/Gin/PostgreSQL)")
+	log.Println("  Makan Bergizi Gratis (MBG) - SPPG Operational Management System")
+	log.Println("  Production Backend Service v2.0.0 (Go/Gin/PostgreSQL)")
 	log.Println("=================================================================")
 
 	// 1. Load Configuration
@@ -65,6 +68,21 @@ func main() {
 	distSvc := distribution.NewService(distRepo, storageSvc)
 	distHandler := distribution.NewHandler(distSvc)
 
+	// Quality Control & Food Safety
+	qcRepo := qc.NewRepository(db.DB)
+	qcSvc := qc.NewService(qcRepo)
+	qcHandler := qc.NewHandler(qcSvc)
+
+	// Menu Planning & Nutrition AKG
+	menuRepo := menu.NewRepository(db.DB)
+	menuSvc := menu.NewService(menuRepo)
+	menuHandler := menu.NewHandler(menuSvc)
+
+	// Reporting & Virtual Account
+	repRepo := reporting.NewRepository(db.DB)
+	repSvc := reporting.NewService(repRepo, storageSvc)
+	repHandler := reporting.NewHandler(repSvc)
+
 	// 5. Start Background Cron Scheduler (23:59 WIB Daily Reconciliation)
 	cronScheduler := scheduler.NewCronScheduler(cfg, finSvc)
 	cronScheduler.Start()
@@ -92,7 +110,7 @@ func main() {
 		pkg.Success(c, http.StatusOK, "MBG SPPG System is healthy", gin.H{
 			"status":    "UP",
 			"timestamp": time.Now().Format(time.RFC3339),
-			"version":   "1.0.0",
+			"version":   "2.0.0",
 		})
 	})
 
@@ -104,6 +122,9 @@ func main() {
 	invHandler.RegisterRoutes(v1, authMW)
 	finHandler.RegisterRoutes(v1, authMW)
 	distHandler.RegisterRoutes(v1, authMW)
+	qcHandler.RegisterRoutes(v1, authMW)
+	menuHandler.RegisterRoutes(v1, authMW)
+	repHandler.RegisterRoutes(v1, authMW)
 
 	// 8. Graceful Server Startup & Shutdown
 	server := &http.Server{

@@ -25,12 +25,12 @@ func NewBASTPDFGenerator() *BASTPDFGenerator {
 
 func (g *BASTPDFGenerator) GenerateBAST(
 	docNumber string,
-	school *models.School,
+	dp *models.DistributionPoint,
 	periodStart, periodEnd time.Time,
 	deliveries []models.Distribution,
 	totalPortions int,
 	totalAmount float64,
-	sppgHeadName, principalName string,
+	sppgHeadName, recipientRepName string,
 ) ([]byte, error) {
 	cfg := config.NewBuilder().
 		WithPageSize(pagesize.A4).
@@ -119,6 +119,11 @@ func (g *BASTPDFGenerator) GenerateBAST(
 	)
 
 	// 4. Parties
+	idOrNPSN := dp.NPSN
+	if idOrNPSN == "" {
+		idOrNPSN = string(dp.Type)
+	}
+
 	m.AddRows(
 		row.New(6).Add(
 			col.New(3).Add(text.New("Pihak Pertama (Penyalur):", props.Text{Style: fontstyle.Bold, Size: 8})),
@@ -126,11 +131,11 @@ func (g *BASTPDFGenerator) GenerateBAST(
 		),
 		row.New(6).Add(
 			col.New(3).Add(text.New("Pihak Kedua (Penerima):", props.Text{Style: fontstyle.Bold, Size: 8})),
-			col.New(9).Add(text.New(fmt.Sprintf("%s (Kepala Sekolah - %s)", principalName, school.Name), props.Text{Size: 8})),
+			col.New(9).Add(text.New(fmt.Sprintf("%s (Perwakilan - %s)", recipientRepName, dp.Name), props.Text{Size: 8})),
 		),
 		row.New(6).Add(
-			col.New(3).Add(text.New("NPSN / Alamat Sekolah:", props.Text{Style: fontstyle.Bold, Size: 8})),
-			col.New(9).Add(text.New(fmt.Sprintf("%s - %s, %s", school.NPSN, school.Address, school.City), props.Text{Size: 8})),
+			col.New(3).Add(text.New("Titik Distribusi / Tipe:", props.Text{Style: fontstyle.Bold, Size: 8})),
+			col.New(9).Add(text.New(fmt.Sprintf("%s (%s) - %s, %s", dp.Name, dp.Type, dp.Address, dp.City), props.Text{Size: 8})),
 		),
 		row.New(4).Add(col.New(12).Add(text.New("", props.Text{}))),
 	)
@@ -192,11 +197,11 @@ func (g *BASTPDFGenerator) GenerateBAST(
 		row.New(18).Add(col.New(12).Add(text.New("", props.Text{}))),
 		row.New(6).Add(
 			col.New(6).Add(text.New(fmt.Sprintf("( %s )", sppgHeadName), props.Text{Style: fontstyle.Bold, Size: 8, Align: align.Center})),
-			col.New(6).Add(text.New(fmt.Sprintf("( %s )", principalName), props.Text{Style: fontstyle.Bold, Size: 8, Align: align.Center})),
+			col.New(6).Add(text.New(fmt.Sprintf("( %s )", recipientRepName), props.Text{Style: fontstyle.Bold, Size: 8, Align: align.Center})),
 		),
 		row.New(5).Add(
 			col.New(6).Add(text.New("Kepala Satuan Pelayanan MBG", props.Text{Size: 7, Align: align.Center})),
-			col.New(6).Add(text.New(fmt.Sprintf("Kepala %s", school.Name), props.Text{Size: 7, Align: align.Center})),
+			col.New(6).Add(text.New(fmt.Sprintf("Perwakilan %s", dp.Name), props.Text{Size: 7, Align: align.Center})),
 		),
 	)
 
@@ -210,11 +215,11 @@ func (g *BASTPDFGenerator) GenerateBAST(
 
 func GenerateSimpleBASTBytes(
 	docNumber string,
-	school *models.School,
+	dp *models.DistributionPoint,
 	periodStart, periodEnd time.Time,
 	totalPortions int,
 	totalAmount float64,
-	sppgHeadName, principalName string,
+	sppgHeadName, recipientRepName string,
 ) []byte {
 	buf := new(bytes.Buffer)
 	buf.WriteString("%PDF-1.4\n")
@@ -226,15 +231,15 @@ func GenerateSimpleBASTBytes(
 	content := fmt.Sprintf(
 		"BT\n/F1 14 Tf\n50 780 Td\n(BERITA ACARA SERAH TERIMA - PROGRAM MBG) Tj\n"+
 			"/F2 10 Tf\n0 -20 Td\n(Nomor: %s) Tj\n"+
-			"0 -25 Td\n(Sekolah: %s - NPSN: %s) Tj\n"+
+			"0 -25 Td\n(Titik Distribusi: %s - Tipe: %s) Tj\n"+
 			"0 -15 Td\n(Periode: %s s/d %s) Tj\n"+
 			"0 -15 Td\n(Total Porsi Tersalurkan: %d Porsi) Tj\n"+
 			"0 -15 Td\n(Total Nilai Alokasi: Rp %.2f) Tj\n"+
 			"0 -30 Td\n(Pihak Pertama: %s | Pihak Kedua: %s) Tj\n"+
 			"ET\n",
-		docNumber, school.Name, school.NPSN,
+		docNumber, dp.Name, dp.Type,
 		periodStart.Format("2006-01-02"), periodEnd.Format("2006-01-02"),
-		totalPortions, totalAmount, sppgHeadName, principalName,
+		totalPortions, totalAmount, sppgHeadName, recipientRepName,
 	)
 
 	buf.WriteString(fmt.Sprintf("5 0 obj <</Length %d>> stream\n%sendstream\nendobj\n", len(content), content))

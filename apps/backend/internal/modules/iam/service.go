@@ -24,6 +24,12 @@ type Service interface {
 	GetNavigation(ctx context.Context, role models.UserRole) []NavigationItem
 	CreateUser(ctx context.Context, req *CreateUserRequest, creatorID uuid.UUID) (*models.User, error)
 	ListUsers(ctx context.Context) ([]models.User, error)
+
+	// Attendance
+	CheckIn(ctx context.Context, req *CheckInRequest, userID uuid.UUID) (*models.Attendance, error)
+	CheckOut(ctx context.Context, req *CheckOutRequest, userID uuid.UUID) (*models.Attendance, error)
+	GetTodayAttendance(ctx context.Context, userID uuid.UUID) (*models.Attendance, error)
+	ListAttendances(ctx context.Context, dateStr string, userID *uuid.UUID) ([]models.Attendance, error)
 }
 
 type service struct {
@@ -136,45 +142,72 @@ func (s *service) GetNavigation(ctx context.Context, role models.UserRole) []Nav
 			Title: "Dashboard",
 			Href:  "/dashboard",
 			Icon:  "LayoutDashboard",
-			Roles: []models.UserRole{models.RoleAdmin, models.RoleFinance, models.RoleWarehouse},
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleFinance, models.RoleWarehouse, models.RoleNutritionist, models.RoleQC, models.RoleDriver, models.RoleVolunteer},
 		},
 		{
 			Title: "Bahan Baku & Stok",
 			Href:  "/dashboard/inventory",
 			Icon:  "Boxes",
-			Roles: []models.UserRole{models.RoleAdmin, models.RoleWarehouse},
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleWarehouse},
 		},
 		{
-			Title: "Produksi",
+			Title: "Perencanaan Menu & AKG",
+			Href:  "/dashboard/menu",
+			Icon:  "Utensils",
+			Badge: "20 Hari",
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleNutritionist, models.RoleFinance},
+		},
+		{
+			Title: "Quality Control & SLHS",
+			Href:  "/dashboard/qc",
+			Icon:  "ShieldCheck",
+			Badge: "HACCP",
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleQC},
+		},
+		{
+			Title: "Produksi & HPP",
 			Href:  "/dashboard/finance/cogs",
 			Icon:  "Calculator",
 			Badge: "Real-time",
-			Roles: []models.UserRole{models.RoleAdmin, models.RoleFinance},
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleFinance, models.RoleWarehouse},
 		},
 		{
-			Title: "Keuangan",
+			Title: "Keuangan & Kas BGN",
 			Href:  "/dashboard/finance",
 			Icon:  "Receipt",
-			Roles: []models.UserRole{models.RoleAdmin, models.RoleFinance},
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleFinance},
 		},
 		{
-			Title: "Distribusi Sekolah",
+			Title: "Laporan & Virtual Account",
+			Href:  "/dashboard/reports",
+			Icon:  "FileSpreadsheet",
+			Badge: "BGN",
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleFinance},
+		},
+		{
+			Title: "Distribusi Penerima",
 			Href:  "/dashboard/distribution",
 			Icon:  "Truck",
-			Roles: []models.UserRole{models.RoleAdmin, models.RoleWarehouse, models.RoleFinance},
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleWarehouse, models.RoleFinance, models.RoleDriver},
 		},
 		{
-			Title: "Berita Acara Serah Terima",
+			Title: "Berita Acara (BAST)",
 			Href:  "/dashboard/distribution/bast",
 			Icon:  "FileText",
 			Badge: "Dokumen",
-			Roles: []models.UserRole{models.RoleAdmin, models.RoleFinance},
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleFinance},
+		},
+		{
+			Title: "Absensi Relawan",
+			Href:  "/dashboard/attendance",
+			Icon:  "UserCheck",
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleVolunteer, models.RoleWarehouse, models.RoleQC, models.RoleDriver, models.RoleNutritionist},
 		},
 		{
 			Title: "Manajemen Pengguna",
 			Href:  "/dashboard/settings/users",
 			Icon:  "Users",
-			Roles: []models.UserRole{models.RoleAdmin},
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG},
 		},
 	}
 
@@ -205,6 +238,8 @@ func (s *service) CreateUser(ctx context.Context, req *CreateUserRequest, creato
 		FullName:     req.FullName,
 		Role:         req.Role,
 		PhoneNumber:  req.PhoneNumber,
+		Position:     req.Position,
+		NIK:          req.NIK,
 		IsActive:     true,
 	}
 
@@ -217,6 +252,92 @@ func (s *service) CreateUser(ctx context.Context, req *CreateUserRequest, creato
 
 func (s *service) ListUsers(ctx context.Context) ([]models.User, error) {
 	return s.repo.ListUsers(ctx)
+}
+
+func (s *service) CheckIn(ctx context.Context, req *CheckInRequest, userID uuid.UUID) (*models.Attendance, error) {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	existing, err := s.repo.GetTodayAttendance(ctx, userID, today)
+	if err == nil && existing != nil {
+		return nil, fmt.Errorf("anda sudah melakukan check-in hari ini pada %s", existing.CheckIn.Format("15:04:05"))
+	}
+
+	shift := req.WorkShift
+	if shift == "" {
+		shift = "PAGI"
+	}
+
+	att := &models.Attendance{
+		AuditModel: models.AuditModel{
+			CreatedBy: &userID,
+		},
+		UserID:           userID,
+		Date:             today,
+		Status:           models.AttendancePresent,
+		CheckIn:          now,
+		CheckInPhotoURL:  req.PhotoURL,
+		CheckInLatitude:  req.Latitude,
+		CheckInLongitude: req.Longitude,
+		WorkShift:        shift,
+		Notes:            req.Notes,
+	}
+
+	if err := s.repo.CreateAttendance(ctx, att); err != nil {
+		return nil, fmt.Errorf("gagal mencatat check-in: %w", err)
+	}
+
+	return s.repo.GetAttendanceByID(ctx, att.ID)
+}
+
+func (s *service) CheckOut(ctx context.Context, req *CheckOutRequest, userID uuid.UUID) (*models.Attendance, error) {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	existing, err := s.repo.GetTodayAttendance(ctx, userID, today)
+	if err != nil || existing == nil {
+		return nil, errors.New("belum ada riwayat check-in untuk hari ini")
+	}
+
+	if existing.CheckOut != nil {
+		return nil, fmt.Errorf("anda sudah melakukan check-out hari ini pada %s", existing.CheckOut.Format("15:04:05"))
+	}
+
+	existing.CheckOut = &now
+	existing.CheckOutPhotoURL = req.PhotoURL
+	existing.CheckOutLatitude = req.Latitude
+	existing.CheckOutLongitude = req.Longitude
+	if req.Notes != "" {
+		if existing.Notes != "" {
+			existing.Notes += " | " + req.Notes
+		} else {
+			existing.Notes = req.Notes
+		}
+	}
+	existing.UpdatedBy = &userID
+
+	if err := s.repo.UpdateAttendance(ctx, existing); err != nil {
+		return nil, fmt.Errorf("gagal mencatat check-out: %w", err)
+	}
+
+	return s.repo.GetAttendanceByID(ctx, existing.ID)
+}
+
+func (s *service) GetTodayAttendance(ctx context.Context, userID uuid.UUID) (*models.Attendance, error) {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	return s.repo.GetTodayAttendance(ctx, userID, today)
+}
+
+func (s *service) ListAttendances(ctx context.Context, dateStr string, userID *uuid.UUID) ([]models.Attendance, error) {
+	var dateFilter *time.Time
+	if dateStr != "" {
+		t, err := time.Parse("2006-01-02", dateStr)
+		if err == nil {
+			dateFilter = &t
+		}
+	}
+	return s.repo.ListAttendances(ctx, dateFilter, userID)
 }
 
 func hashToken(token string) string {

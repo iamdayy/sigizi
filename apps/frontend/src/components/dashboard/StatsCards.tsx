@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Card } from '@/components/ui/Card';
 import { formatIDR } from '@/lib/utils';
 import { Utensils, DollarSign, Boxes, TrendingUp, AlertTriangle } from 'lucide-react';
 
@@ -62,28 +63,28 @@ export default function StatsCards({
       {cards.map((card, idx) => {
         const Icon = card.icon;
         return (
-          <div
+          <Card
             key={idx}
-            className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg backdrop-blur-xl hover:border-slate-700 transition-all duration-200"
+            className="p-5 hover:shadow-lg"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 {card.title}
               </span>
-              <div className={`p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60 ${card.iconColor}`}>
+              <div className={`p-2.5 rounded-[16px] bg-brand-bg border-none ${card.iconColor}`}>
                 <Icon className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-3">
-              <p className="text-2xl font-extrabold text-white tracking-tight">
+              <p className="text-2xl font-extrabold text-brand-dark tracking-tight">
                 {card.value}
               </p>
-              <p className={`text-xs mt-1 ${card.alert ? 'text-rose-400 font-medium flex items-center gap-1' : 'text-slate-400'}`}>
+              <p className={`text-xs mt-1 ${card.alert ? 'text-rose-500 font-medium flex items-center gap-1' : 'text-slate-500'}`}>
                 {card.alert && <AlertTriangle className="w-3 h-3" />}
                 {card.subtext}
               </p>
             </div>
-          </div>
+          </Card>
         );
       })}
     </div>

@@ -1,55 +1,42 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-dark: #0f4c81;
+  --color-brand-primary: #0071e4;
+  --color-brand-light: #b5e0ea;
+  --color-brand-bg: #f5f7fa;
+  --radius-brand: 24px;
+  --shadow-brand: 0 4px 20px -4px rgba(0, 0, 0, 0.05);
+}
+
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    --background: 210 40% 98%; /* #f5f7fa */
+    --foreground: 212 79% 28%; /* #0f4c81 */
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 212 79% 28%; /* #0f4c81 */
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222 47% 11.2%;
+    --popover-foreground: 212 79% 28%;
+    --primary: 210 100% 45%; /* #0071e4 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 191 58% 82%; /* #b5e0ea */
+    --secondary-foreground: 210 100% 45%; /* #0071e4 */
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222 47% 11.2%;
+    --accent: 191 58% 82%; /* #b5e0ea */
+    --accent-foreground: 210 100% 45%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.75rem;
-  }
-
-  .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --card: 224 71% 7%;
-    --card-foreground: 213 31% 91%;
-    --popover: 224 71% 7%;
-    --popover-foreground: 213 31% 91%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --ring: 210 100% 45%; /* #0071e4 */
+    --radius: 1.5rem; /* Highly rounded as in design */
   }
 }
 
 body {
-  background-color: #0b1120;
-  color: #f1f5f9;
+  background-color: var(--color-brand-bg);
+  color: var(--color-brand-dark);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   -webkit-font-smoothing: antialiased;
 }

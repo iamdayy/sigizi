@@ -19,6 +19,13 @@ type Repository interface {
 	GetRefreshToken(ctx context.Context, tokenHash string) (*models.RefreshToken, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
 	RevokeAllUserTokens(ctx context.Context, userID uuid.UUID) error
+
+	// Attendance
+	CreateAttendance(ctx context.Context, att *models.Attendance) error
+	GetAttendanceByID(ctx context.Context, id uuid.UUID) (*models.Attendance, error)
+	GetTodayAttendance(ctx context.Context, userID uuid.UUID, today time.Time) (*models.Attendance, error)
+	UpdateAttendance(ctx context.Context, att *models.Attendance) error
+	ListAttendances(ctx context.Context, date *time.Time, userID *uuid.UUID) ([]models.Attendance, error)
 }
 
 type repository struct {
@@ -76,4 +83,54 @@ func (r *repository) RevokeRefreshToken(ctx context.Context, tokenHash string) e
 
 func (r *repository) RevokeAllUserTokens(ctx context.Context, userID uuid.UUID) error {
 	return r.db.WithContext(ctx).Model(&models.RefreshToken{}).Where("user_id = ?", userID).Update("revoked", true).Error
+}
+
+func (r *repository) CreateAttendance(ctx context.Context, att *models.Attendance) error {
+	return r.db.WithContext(ctx).Create(att).Error
+}
+
+func (r *repository) GetAttendanceByID(ctx context.Context, id uuid.UUID) (*models.Attendance, error) {
+	var att models.Attendance
+	err := r.db.WithContext(ctx).Preload("User").Where("id = ?", id).First(&att).Error
+	if err != nil {
+		return nil, err
+	}
+	return &att, nil
+}
+
+func (r *repository) GetTodayAttendance(ctx context.Context, userID uuid.UUID, today time.Time) (*models.Attendance, error) {
+	var att models.Attendance
+	startOfDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
+	endOfDay := time.Date(today.Year(), today.Month(), today.Day(), 23, 59, 59, 999999999, today.Location())
+
+	err := r.db.WithContext(ctx).
+		Preload("User").
+		Where("user_id = ? AND date BETWEEN ? AND ?", userID, startOfDay, endOfDay).
+		Order("created_at DESC").
+		First(&att).Error
+	if err != nil {
+		return nil, err
+	}
+	return &att, nil
+}
+
+func (r *repository) UpdateAttendance(ctx context.Context, att *models.Attendance) error {
+	return r.db.WithContext(ctx).Save(att).Error
+}
+
+func (r *repository) ListAttendances(ctx context.Context, date *time.Time, userID *uuid.UUID) ([]models.Attendance, error) {
+	var list []models.Attendance
+	query := r.db.WithContext(ctx).Preload("User")
+
+	if date != nil {
+		start := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+		end := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 999999999, date.Location())
+		query = query.Where("date BETWEEN ? AND ?", start, end)
+	}
+	if userID != nil {
+		query = query.Where("user_id = ?", *userID)
+	}
+
+	err := query.Order("check_in DESC").Find(&list).Error
+	return list, err
 }

@@ -14,6 +14,8 @@ export function formatIDR(amount: number): string {
   }).format(amount);
 }
 
+export const formatCurrency = formatIDR;
+
 export function formatDate(dateString: string): string {
   if (!dateString) return "-";
   try {

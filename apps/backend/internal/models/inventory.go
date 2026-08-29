@@ -16,6 +16,7 @@ const (
 	CategoryDairy        ItemCategory = "DAIRY"
 	CategorySpice        ItemCategory = "SPICE"
 	CategoryPackaging    ItemCategory = "PACKAGING"
+	CategoryBeverage     ItemCategory = "BEVERAGE"
 	CategoryOther        ItemCategory = "OTHER"
 )
 

@@ -33,9 +33,18 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup, authMW gin.HandlerFunc
 		protected.GET("/auth/me", h.GetProfile)
 		protected.GET("/navigation", h.GetNavigation)
 
-		// Admin only
+		// Attendance routes
+		attendanceGroup := protected.Group("/attendance")
+		{
+			attendanceGroup.POST("/check-in", h.CheckIn)
+			attendanceGroup.POST("/check-out", h.CheckOut)
+			attendanceGroup.GET("/today", h.GetTodayAttendance)
+			attendanceGroup.GET("", h.ListAttendances)
+		}
+
+		// User Management
 		adminOnly := protected.Group("/users")
-		adminOnly.Use(middleware.RequireRole(models.RoleAdmin))
+		adminOnly.Use(middleware.RequireRole(models.RoleAdmin, models.RoleHeadSPPG))
 		{
 			adminOnly.GET("", h.ListUsers)
 			adminOnly.POST("", h.CreateUser)
@@ -135,4 +144,67 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	}
 
 	pkg.Success(c, http.StatusCreated, "User created successfully", user)
+}
+
+func (h *Handler) CheckIn(c *gin.Context) {
+	var req CheckInRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		pkg.Error(c, http.StatusBadRequest, "Invalid check-in payload", err)
+		return
+	}
+
+	userID, _ := c.Get("UserID")
+	att, err := h.service.CheckIn(c.Request.Context(), &req, userID.(uuid.UUID))
+	if err != nil {
+		pkg.Error(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	pkg.Success(c, http.StatusCreated, "Check-in recorded successfully", att)
+}
+
+func (h *Handler) CheckOut(c *gin.Context) {
+	var req CheckOutRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		pkg.Error(c, http.StatusBadRequest, "Invalid check-out payload", err)
+		return
+	}
+
+	userID, _ := c.Get("UserID")
+	att, err := h.service.CheckOut(c.Request.Context(), &req, userID.(uuid.UUID))
+	if err != nil {
+		pkg.Error(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	pkg.Success(c, http.StatusOK, "Check-out recorded successfully", att)
+}
+
+func (h *Handler) GetTodayAttendance(c *gin.Context) {
+	userID, _ := c.Get("UserID")
+	att, err := h.service.GetTodayAttendance(c.Request.Context(), userID.(uuid.UUID))
+	if err != nil {
+		pkg.Success(c, http.StatusOK, "No attendance record today", nil)
+		return
+	}
+
+	pkg.Success(c, http.StatusOK, "Today attendance record retrieved", att)
+}
+
+func (h *Handler) ListAttendances(c *gin.Context) {
+	dateStr := c.Query("date")
+	var userFilter *uuid.UUID
+	if userIDStr := c.Query("user_id"); userIDStr != "" {
+		if uid, err := uuid.Parse(userIDStr); err == nil {
+			userFilter = &uid
+		}
+	}
+
+	list, err := h.service.ListAttendances(c.Request.Context(), dateStr, userFilter)
+	if err != nil {
+		pkg.Error(c, http.StatusInternalServerError, "Failed to list attendance records", err)
+		return
+	}
+
+	pkg.Success(c, http.StatusOK, "Attendance records retrieved", list)
 }

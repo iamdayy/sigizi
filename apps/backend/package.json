@@ -1,10 +1,10 @@
 {
-  "name": "@sisku/backend",
+  "name": "@sigizi/backend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "air run ./cmd/server/main.go",
-    "build": "go build -o bin/server ./cmd/server/main.go",
+    "dev": "air run ./cmd/api/main.go",
+    "build": "go build -o bin/api ./cmd/api/main.go",
     "lint": "go vet ./... && echo 'lint passed'",
     "test": "go test ./...",
     "test:unit": "go test -count=1 ./...",

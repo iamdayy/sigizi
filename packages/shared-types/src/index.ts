@@ -3,4 +3,7 @@ export * from './iam';
 export * from './inventory';
 export * from './finance';
 export * from './distribution';
+export * from './quality_control';
+export * from './menu';
+export * from './reporting';
 export * from './api';

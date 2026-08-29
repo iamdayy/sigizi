@@ -8,6 +8,7 @@ import {
   PolarAngleAxis,
 } from 'recharts';
 import { formatIDR } from '@/lib/utils';
+import { Card } from '@/components/ui/Card';
 import { AlertCircle, CheckCircle2, TrendingDown, TrendingUp } from 'lucide-react';
 
 interface MarginGaugeProps {
@@ -37,23 +38,23 @@ export default function MarginGauge({
   ];
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl backdrop-blur-xl relative overflow-hidden">
+    <Card className="p-6 relative">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+          <h2 className="text-base font-bold text-brand-dark flex items-center gap-2">
             Rasio Gross Margin Dinamis (FEFO)
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Dihitung berdasarkan realisasi biaya batch bahan terpakai
           </p>
         </div>
         <div
           className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
             isCritical
-              ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 animate-pulse'
+              ? 'bg-rose-50 text-rose-600 border-rose-100 animate-pulse'
               : isOptimal
-              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-              : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+              ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+              : 'bg-amber-50 text-amber-600 border-amber-100'
           }`}
         >
           {isCritical ? (
@@ -91,7 +92,7 @@ export default function MarginGauge({
                 tick={false}
               />
               <RadialBar
-                background={{ fill: '#1e293b' }}
+                background={{ fill: '#f1f5f9' }}
                 dataKey="value"
                 cornerRadius={10}
               />
@@ -99,68 +100,68 @@ export default function MarginGauge({
           </ResponsiveContainer>
 
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-2 text-center">
-            <span className="text-3xl font-extrabold tracking-tight text-white">
+            <span className="text-3xl font-extrabold tracking-tight text-brand-dark">
               {marginPercentage.toFixed(1)}%
             </span>
-            <span className="block text-[11px] font-medium text-slate-400">
+            <span className="block text-[11px] font-medium text-slate-500">
               Rata-rata Margin
             </span>
           </div>
 
           <div className="flex justify-between w-full px-6 text-[11px] text-slate-500 font-semibold -mt-6">
             <span>0%</span>
-            <span className="text-rose-400">Batas 10%</span>
+            <span className="text-rose-500">Batas 10%</span>
             <span>100%</span>
           </div>
         </div>
 
         {/* Detailed Metrics Breakdown */}
         <div className="lg:col-span-7 space-y-3.5">
-          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
+          <div className="p-3.5 rounded-[16px] bg-brand-bg flex items-center justify-between">
             <div>
-              <span className="text-xs text-slate-400 font-medium">
+              <span className="text-xs text-slate-500 font-medium">
                 Alokasi Porsi APBN MBG
               </span>
-              <p className="text-sm font-bold text-slate-200">
+              <p className="text-sm font-bold text-brand-dark">
                 {formatIDR(sellingPricePerPortion || 15000)} / porsi
               </p>
             </div>
             <div className="text-right">
-              <span className="text-xs text-slate-400 font-medium">
+              <span className="text-xs text-slate-500 font-medium">
                 HPP Aktual (COGS)
               </span>
-              <p className="text-sm font-bold text-amber-400">
+              <p className="text-sm font-bold text-amber-500">
                 {formatIDR(averageCOGSPerPortion)} / porsi
               </p>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
+          <div className="p-3.5 rounded-[16px] bg-brand-bg flex items-center justify-between">
             <div>
-              <span className="text-xs text-slate-400 font-medium">
+              <span className="text-xs text-slate-500 font-medium">
                 Akumulasi Pendapatan Alokasi
               </span>
-              <p className="text-sm font-bold text-blue-400">
+              <p className="text-sm font-bold text-brand-primary">
                 {formatIDR(totalRevenue)}
               </p>
             </div>
             <div className="text-right">
-              <span className="text-xs text-slate-400 font-medium">
+              <span className="text-xs text-slate-500 font-medium">
                 Akumulasi Beban Bahan (COGS)
               </span>
-              <p className="text-sm font-bold text-slate-300">
+              <p className="text-sm font-bold text-brand-dark">
                 {formatIDR(totalCOGS)}
               </p>
             </div>
           </div>
 
           {/* Regulatory Notice */}
-          <div className="text-[11px] text-slate-400 flex items-center gap-2 px-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span>
+          <div className="text-[11px] text-slate-500 flex items-center gap-2 px-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-primary shrink-0"></span>
             Standar BGN: Ambang batas margin minimum 10% menjamin keberlanjutan unit SPPG.
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

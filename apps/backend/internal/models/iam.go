@@ -9,9 +9,14 @@ import (
 type UserRole string
 
 const (
-	RoleAdmin     UserRole = "ADMIN"
-	RoleFinance   UserRole = "FINANCE"
-	RoleWarehouse UserRole = "WAREHOUSE"
+	RoleAdmin        UserRole = "ADMIN"
+	RoleFinance      UserRole = "FINANCE"
+	RoleWarehouse    UserRole = "WAREHOUSE"
+	RoleNutritionist UserRole = "NUTRITIONIST"
+	RoleQC           UserRole = "QC"
+	RoleDriver       UserRole = "DRIVER"
+	RoleVolunteer    UserRole = "VOLUNTEER"
+	RoleHeadSPPG     UserRole = "HEAD_SPPG"
 )
 
 type User struct {
@@ -21,6 +26,8 @@ type User struct {
 	FullName     string   `gorm:"type:varchar(255);not null" json:"full_name"`
 	Role         UserRole `gorm:"type:varchar(32);not null;default:'WAREHOUSE'" json:"role"`
 	PhoneNumber  string   `gorm:"type:varchar(50)" json:"phone_number,omitempty"`
+	Position     string   `gorm:"type:varchar(100)" json:"position,omitempty"`
+	NIK          string   `gorm:"type:varchar(20)" json:"nik,omitempty"`
 	IsActive     bool     `gorm:"type:boolean;not null;default:true" json:"is_active"`
 }
 

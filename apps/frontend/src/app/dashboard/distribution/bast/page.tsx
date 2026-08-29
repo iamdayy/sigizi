@@ -188,7 +188,7 @@ export default function BASTGeneratorPage() {
                 >
                   {schools?.map((s) => (
                     <option key={s.id} value={s.id} className="bg-slate-900 text-white">
-                      {s.name} (NPSN: {s.npsn} - {s.total_students} Siswa)
+                      {s.name} ({s.total_recipients || s.total_students || 0} Penerima Manfaat)
                     </option>
                   ))}
                 </select>
@@ -439,7 +439,7 @@ export default function BASTGeneratorPage() {
                       {doc.document_number}
                     </td>
                     <td className="py-3.5 px-4 font-semibold text-slate-100">
-                      {doc.school?.name || 'Sekolah'}
+                      {doc.distribution_point?.name || doc.school?.name || 'Titik Penerima'}
                     </td>
                     <td className="py-3.5 px-4 text-slate-400">
                       {formatDate(doc.period_start)} - {formatDate(doc.period_end)}

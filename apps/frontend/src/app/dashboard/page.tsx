@@ -25,7 +25,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
-
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 export default function DashboardPage() {
   // 1. Fetch Financial Dashboard Metrics
   const {
@@ -76,32 +77,27 @@ export default function DashboardPage() {
       {/* Page Header with Real-time Refresh */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+          <h1 className="text-2xl font-black text-brand-dark tracking-tight flex items-center gap-2.5">
             Dashboard Operasional &amp; Keuangan SPPG
-            <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/30">
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-light/40 text-brand-primary">
               Live Real-Time
             </span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Pemantauan Penyaluran MBG, Pergerakan Stok FEFO, dan Realisasi Gross Margin Biaya Bahan
           </p>
         </div>
 
         {/* Quick Action Buttons */}
         <div className="flex items-center space-x-3">
-          <button
-            onClick={() => refetchFin()}
-            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white transition-colors"
-            title="Muat Ulang Data"
-          >
+          <Button variant="outline" size="icon" onClick={() => refetchFin()} title="Muat Ulang Data">
             <RefreshCw className="w-4 h-4" />
-          </button>
-          <a
-            href="/dashboard/distribution/bast"
-            className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/25 transition-all duration-150"
-          >
-            <FileText className="w-4 h-4" />
-            <span>Buat Dokumen BAST</span>
+          </Button>
+          <a href="/dashboard/distribution/bast">
+            <Button variant="primary">
+              <FileText className="w-4 h-4" />
+              <span>Buat Dokumen BAST</span>
+            </Button>
           </a>
         </div>
       </div>
@@ -133,88 +129,88 @@ export default function DashboardPage() {
         </div>
 
         {/* SPPG Quick Management Panel */}
-        <div className="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl backdrop-blur-xl flex flex-col justify-between">
+        <Card className="lg:col-span-5 flex flex-col justify-between p-6">
           <div>
-            <h2 className="text-base font-bold text-slate-100 flex items-center justify-between">
+            <h2 className="text-base font-bold text-brand-dark flex items-center justify-between">
               <span>Alur Operasional Harian SPPG</span>
-              <Sparkles className="w-4 h-4 text-blue-400" />
+              <Sparkles className="w-4 h-4 text-brand-primary" />
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Pintasan cepat proses dapur, logistik sekolah, dan audit
             </p>
 
             <div className="mt-4 space-y-2.5">
               <a
                 href="/dashboard/inventory"
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-blue-500/40 hover:bg-slate-800/40 transition-all duration-150 group"
+                className="flex items-center justify-between p-3 rounded-[16px] bg-slate-50 hover:bg-brand-light/20 transition-all duration-150 group"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                  <div className="p-2 rounded-[12px] bg-brand-light/40 text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-colors">
                     <Boxes className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-200">Gudang &amp; Penerimaan Batch</p>
-                    <p className="text-[11px] text-slate-400">Input stok bahan baru dengan tanggal kedaluwarsa</p>
+                    <p className="text-xs font-semibold text-brand-dark">Gudang &amp; Penerimaan Batch</p>
+                    <p className="text-[11px] text-slate-500">Input stok bahan baru dengan tanggal kedaluwarsa</p>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors" />
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-brand-primary transition-colors" />
               </a>
 
               <a
                 href="/dashboard/finance/cogs"
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-emerald-500/40 hover:bg-slate-800/40 transition-all duration-150 group"
+                className="flex items-center justify-between p-3 rounded-[16px] bg-slate-50 hover:bg-[#b5e0ea]/20 transition-all duration-150 group"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                  <div className="p-2 rounded-[12px] bg-emerald-100 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
                     <Calculator className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-200">Kalkulasi HPP &amp; Produksi Porsi</p>
-                    <p className="text-[11px] text-slate-400">Dapur konsumsi bahan FEFO &amp; kalkulasi margin</p>
+                    <p className="text-xs font-semibold text-brand-dark">Kalkulasi HPP &amp; Produksi Porsi</p>
+                    <p className="text-[11px] text-slate-500">Dapur konsumsi bahan FEFO &amp; kalkulasi margin</p>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 transition-colors" />
               </a>
 
               <a
                 href="/dashboard/distribution/bast"
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-purple-500/40 hover:bg-slate-800/40 transition-all duration-150 group"
+                className="flex items-center justify-between p-3 rounded-[16px] bg-slate-50 hover:bg-[#b5e0ea]/20 transition-all duration-150 group"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                  <div className="p-2 rounded-[12px] bg-purple-100 text-purple-600 group-hover:bg-purple-500 group-hover:text-white transition-colors">
                     <FileText className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-200">Generator Dokumen BAST (PDF)</p>
-                    <p className="text-[11px] text-slate-400">Cetak Berita Acara Serah Terima per Sekolah</p>
+                    <p className="text-xs font-semibold text-brand-dark">Generator Dokumen BAST (PDF)</p>
+                    <p className="text-[11px] text-slate-500">Cetak Berita Acara Serah Terima per Sekolah</p>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition-colors" />
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-purple-500 transition-colors" />
               </a>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Rekonsiliasi Otomatis (Cron):</span>
-            <span className="font-semibold text-emerald-400">23:59 WIB Harian</span>
+            <span className="font-semibold text-emerald-500">23:59 WIB Harian</span>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Recent Production Batches & Exact COGS Realization Table */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl backdrop-blur-xl">
+      <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-base font-bold text-slate-100">
+            <h2 className="text-base font-bold text-brand-dark">
               Realisasi HPP &amp; Gross Margin Batch Terakhir
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Perhitungan dinamis dari unit cost batch FEFO yang dideplesi
             </p>
           </div>
           <a
             href="/dashboard/finance"
-            className="text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1"
+            className="text-xs font-semibold text-brand-primary hover:text-brand-dark flex items-center gap-1 transition-colors"
           >
             Lihat Semua Jurnal
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -224,52 +220,52 @@ export default function DashboardPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
-                <th className="pb-3 pr-4">Kode Produksi</th>
-                <th className="pb-3 px-4">Menu MBG</th>
-                <th className="pb-3 px-4 text-right">Jumlah Porsi</th>
-                <th className="pb-3 px-4 text-right">HPP / Porsi</th>
-                <th className="pb-3 px-4 text-right">Gross Margin</th>
-                <th className="pb-3 pl-4 text-center">Status Audit</th>
+              <tr className="border-b border-slate-100 text-brand-dark font-bold uppercase tracking-wider bg-slate-50/50">
+                <th className="py-3 pl-4 pr-4 rounded-tl-[12px] rounded-bl-[12px]">Kode Produksi</th>
+                <th className="py-3 px-4">Menu MBG</th>
+                <th className="py-3 px-4 text-right">Jumlah Porsi</th>
+                <th className="py-3 px-4 text-right">HPP / Porsi</th>
+                <th className="py-3 px-4 text-right">Gross Margin</th>
+                <th className="py-3 pl-4 pr-4 text-center rounded-tr-[12px] rounded-br-[12px]">Status Audit</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-300">
+            <tbody className="divide-y divide-slate-100 text-slate-600">
               {prodBatches && prodBatches.length > 0 ? (
                 prodBatches.map((b) => (
-                  <tr key={b.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-3.5 pr-4 font-mono font-medium text-slate-400">
+                  <tr key={b.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-3.5 pl-4 pr-4 font-mono font-medium text-slate-500">
                       {b.production_code}
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-100">
+                    <td className="py-3.5 px-4 font-semibold text-brand-dark">
                       {b.meal_name}
                     </td>
                     <td className="py-3.5 px-4 text-right font-medium">
                       {b.total_portions} Porsi
                     </td>
-                    <td className="py-3.5 px-4 text-right font-semibold text-amber-300">
+                    <td className="py-3.5 px-4 text-right font-semibold text-brand-primary">
                       {formatIDR(b.cogs_per_portion)}
                     </td>
                     <td className="py-3.5 px-4 text-right font-bold">
                       <span
                         className={
                           b.is_margin_critical
-                            ? 'text-rose-400'
+                            ? 'text-rose-500'
                             : b.margin_percentage >= 20
-                            ? 'text-emerald-400'
-                            : 'text-amber-400'
+                            ? 'text-emerald-500'
+                            : 'text-amber-500'
                         }
                       >
                         {b.margin_percentage.toFixed(1)}%
                       </span>
                     </td>
-                    <td className="py-3.5 pl-4 text-center">
+                    <td className="py-3.5 pl-4 pr-4 text-center">
                       {b.is_margin_critical ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">
                           <AlertCircle className="w-3 h-3" />
                           KRITIS
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
                           <CheckCircle2 className="w-3 h-3" />
                           SESUAI
                         </span>
@@ -287,7 +283,7 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }
