@@ -39,20 +39,20 @@ export default function ExportButton({
       className={cn(
         'inline-flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 active:scale-95 shadow-sm',
         exported
-          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-          : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-white',
+          ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+          : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600 hover:text-brand-dark',
         className
       )}
       title={`Unduh berkas ${filename}`}
     >
       {exported ? (
         <>
-          <Check className="w-3.5 h-3.5 text-emerald-400 animate-in zoom-in-50" />
+          <Check className="w-3.5 h-3.5 text-emerald-600 animate-in zoom-in-50" />
           <span>Terekspor</span>
         </>
       ) : (
         <>
-          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
           <span>{isExporting ? 'Mengekspor...' : label}</span>
         </>
       )}

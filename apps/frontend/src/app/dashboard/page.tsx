@@ -145,7 +145,7 @@ export default function DashboardPage() {
                 className="flex items-center justify-between p-3 rounded-[16px] bg-slate-50 hover:bg-brand-light/20 transition-all duration-150 group"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-[12px] bg-brand-light/40 text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-colors">
+                  <div className="p-2 rounded-[12px] bg-brand-light/40 text-brand-primary group-hover:bg-brand-primary group-hover:text-brand-dark transition-colors">
                     <Boxes className="w-4 h-4" />
                   </div>
                   <div>
@@ -153,7 +153,7 @@ export default function DashboardPage() {
                     <p className="text-[11px] text-slate-500">Input stok bahan baru dengan tanggal kedaluwarsa</p>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-brand-primary transition-colors" />
+                <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-brand-primary transition-colors" />
               </a>
 
               <a
@@ -161,7 +161,7 @@ export default function DashboardPage() {
                 className="flex items-center justify-between p-3 rounded-[16px] bg-slate-50 hover:bg-[#b5e0ea]/20 transition-all duration-150 group"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-[12px] bg-emerald-100 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                  <div className="p-2 rounded-[12px] bg-emerald-100 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-brand-dark transition-colors">
                     <Calculator className="w-4 h-4" />
                   </div>
                   <div>
@@ -169,7 +169,7 @@ export default function DashboardPage() {
                     <p className="text-[11px] text-slate-500">Dapur konsumsi bahan FEFO &amp; kalkulasi margin</p>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 transition-colors" />
+                <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-500 transition-colors" />
               </a>
 
               <a
@@ -177,7 +177,7 @@ export default function DashboardPage() {
                 className="flex items-center justify-between p-3 rounded-[16px] bg-slate-50 hover:bg-[#b5e0ea]/20 transition-all duration-150 group"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-[12px] bg-purple-100 text-purple-600 group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                  <div className="p-2 rounded-[12px] bg-purple-100 text-purple-600 group-hover:bg-purple-500 group-hover:text-brand-dark transition-colors">
                     <FileText className="w-4 h-4" />
                   </div>
                   <div>
@@ -185,7 +185,7 @@ export default function DashboardPage() {
                     <p className="text-[11px] text-slate-500">Cetak Berita Acara Serah Terima per Sekolah</p>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-purple-500 transition-colors" />
+                <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-purple-500 transition-colors" />
               </a>
             </div>
           </div>

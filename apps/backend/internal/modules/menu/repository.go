@@ -100,6 +100,21 @@ func (r *repository) GetActiveMenuCycle(ctx context.Context) (*models.MenuCycle,
 		Where("is_active = true").
 		First(&cycle).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Fallback to the most recently created cycle if none is explicitly active
+			errLatest := r.db.WithContext(ctx).
+				Preload("ApprovedBy").
+				Preload("Items", func(db *gorm.DB) *gorm.DB {
+					return db.Order("day_number ASC")
+				}).
+				Preload("Items.Recipes").
+				Preload("Items.Recipes.Item").
+				Order("created_at DESC").
+				First(&cycle).Error
+			if errLatest == nil {
+				return &cycle, nil
+			}
+		}
 		return nil, err
 	}
 	return &cycle, nil

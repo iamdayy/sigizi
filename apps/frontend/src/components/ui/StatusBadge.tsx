@@ -15,27 +15,27 @@ export default function StatusBadge({ status, className }: StatusBadgeProps) {
       case 'SUCCESS':
       case 'SIGNED':
       case 'ACTIVE':
-        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        return 'bg-emerald-50 text-emerald-600 border-emerald-200';
       case 'IN_TRANSIT':
       case 'PREPARING':
       case 'GENERATED':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+        return 'bg-blue-50 text-blue-600 border-blue-200';
       case 'SCHEDULED':
       case 'IN':
-        return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+        return 'bg-indigo-50 text-indigo-600 border-indigo-200';
       case 'OUT':
       case 'ADJUSTMENT':
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+        return 'bg-amber-50 text-amber-600 border-amber-200';
       case 'REJECTED':
       case 'ERROR':
       case 'WASTE':
       case 'INACTIVE':
       case 'CRITICAL':
-        return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+        return 'bg-rose-50 text-rose-600 border-rose-200';
       case 'SKIPPED_NO_MOVEMENTS':
       case 'ARCHIVED':
       default:
-        return 'bg-slate-800 text-slate-300 border-slate-700';
+        return 'bg-slate-50 text-slate-600 border-slate-200';
     }
   };
 
@@ -45,25 +45,25 @@ export default function StatusBadge({ status, className }: StatusBadgeProps) {
       case 'SUCCESS':
       case 'SIGNED':
       case 'ACTIVE':
-        return 'bg-emerald-400';
+        return 'bg-emerald-500';
       case 'IN_TRANSIT':
       case 'PREPARING':
       case 'GENERATED':
-        return 'bg-blue-400';
+        return 'bg-blue-500';
       case 'SCHEDULED':
       case 'IN':
-        return 'bg-indigo-400';
+        return 'bg-indigo-500';
       case 'OUT':
       case 'ADJUSTMENT':
-        return 'bg-amber-400';
+        return 'bg-amber-500';
       case 'REJECTED':
       case 'ERROR':
       case 'WASTE':
       case 'INACTIVE':
       case 'CRITICAL':
-        return 'bg-rose-400';
+        return 'bg-rose-500';
       default:
-        return 'bg-slate-400';
+        return 'bg-slate-500';
     }
   };
 

@@ -201,12 +201,8 @@ func (d *Database) AutoMigrate() error {
 }
 
 func (d *Database) SeedInitialData() error {
-	var userCount int64
-	d.DB.Model(&models.User{}).Count(&userCount)
-	if userCount > 0 {
-		return nil // Already seeded
-	}
-
+	// We don't return early entirely if users exist, because we might need to seed new tables like NutritionInfo
+	// in existing databases. Each block will use FirstOrCreate to avoid duplicates.
 	log.Println("[DATABASE] Seeding initial SPPG data based on BGN standard...")
 
 	// Hash password "Password123!"
@@ -467,6 +463,52 @@ func (d *Database) SeedInitialData() error {
 		IsActive:              true,
 	}
 	d.DB.FirstOrCreate(&va, models.VirtualAccount{AccountNumber: va.AccountNumber})
+
+	// Seed Menu Cycle (20 Days BGN Standard)
+	headUUIDStr := "00000000-0000-0000-0000-000000000001"
+	headID := uuid.MustParse(headUUIDStr)
+	cycleID := uuid.MustParse("d0000000-0000-0000-0000-000000000001")
+	menuCycle := models.MenuCycle{
+		AuditModel:   models.AuditModel{ID: cycleID, CreatedBy: &headID},
+		Name:         "Siklus Menu Utama SPPG Agustus 2026",
+		TotalDays:    20,
+		StartDate:    time.Now().AddDate(0, 0, -2),
+		EndDate:      time.Now().AddDate(0, 0, 18),
+		IsActive:     true,
+		ApprovedByID: &headID,
+		Notes:        "Siklus disetujui BGN",
+	}
+	d.DB.FirstOrCreate(&menuCycle, models.MenuCycle{Name: menuCycle.Name})
+    d.DB.Model(&menuCycle).Update("is_active", true)
+
+	// Seed Menu Items for Day 1
+	menuItem1 := models.MenuItem{
+		AuditModel:    models.AuditModel{ID: uuid.MustParse("d1000000-0000-0000-0000-000000000001")},
+		MenuCycleID:   cycleID,
+		DayNumber:     1,
+		MealName:      "Nasi Putih + Ayam Goreng Lengkuas + Sayur Bening Bayam",
+		Description:   "Menu Gizi Seimbang MBG Hari 1 - Tinggi Protein & Serat",
+		IncludesMilk:  true,
+		MilkType:      "UHT",
+		TotalCalories: 585.5,
+		TotalProtein:  24.5,
+		TotalFat:      18.2,
+		TotalCarbs:    62.0,
+		AKGPercentage: 29.3,
+		IsAKGCompliant: true,
+	}
+	d.DB.FirstOrCreate(&menuItem1, models.MenuItem{MenuCycleID: cycleID, DayNumber: 1})
+
+	// Recipes for Day 1
+	recipes1 := []models.MenuRecipeItem{
+		{AuditModel: models.AuditModel{ID: uuid.MustParse("d1100000-0000-0000-0000-000000000001")}, MenuItemID: menuItem1.ID, ItemID: riceID, QtyPerPortionGram: 100},
+		{AuditModel: models.AuditModel{ID: uuid.MustParse("d1100000-0000-0000-0000-000000000002")}, MenuItemID: menuItem1.ID, ItemID: chickID, QtyPerPortionGram: 75},
+		{AuditModel: models.AuditModel{ID: uuid.MustParse("d1100000-0000-0000-0000-000000000003")}, MenuItemID: menuItem1.ID, ItemID: spinachID, QtyPerPortionGram: 50},
+	}
+	for _, r := range recipes1 {
+		d.DB.FirstOrCreate(&r, models.MenuRecipeItem{MenuItemID: r.MenuItemID, ItemID: r.ItemID})
+	}
+
 
 	return nil
 }
