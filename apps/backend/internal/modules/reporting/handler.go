@@ -1,6 +1,11 @@
 package reporting
 
 import (
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -12,16 +17,22 @@ import (
 )
 
 type Handler struct {
-	service Service
+	service       Service
+	webhookSecret string
 }
 
-func NewHandler(service Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service Service, webhookSecret string) *Handler {
+	return &Handler{
+		service:       service,
+		webhookSecret: webhookSecret,
+	}
 }
 
 func (h *Handler) RegisterRoutes(router *gin.RouterGroup, authMW gin.HandlerFunc) {
 	// Public Webhook from Partner Banks (SIPGN, BRI, Mandiri)
-	router.POST("/webhooks/bank/topup", h.HandleBankWebhook)
+	// Specific rate limiter: 10 requests per minute (rps = 10/60 = 0.166, burst = 10)
+	webhookLimiter := middleware.NewRateLimiter(10.0/60.0, 10.0).Middleware()
+	router.POST("/webhooks/bank/topup", webhookLimiter, h.HandleBankWebhook)
 
 	// Protected routes
 	protected := router.Group("")
@@ -122,14 +133,51 @@ func (h *Handler) RecordVATransaction(c *gin.Context) {
 }
 
 func (h *Handler) HandleBankWebhook(c *gin.Context) {
+	// 1. Signature Verification
+	if h.webhookSecret != "" {
+		signature := c.GetHeader("X-Signature")
+		if signature == "" {
+			pkg.Error(c, http.StatusUnauthorized, "Missing X-Signature header", nil)
+			return
+		}
+
+		bodyBytes, err := c.GetRawData()
+		if err != nil {
+			pkg.Error(c, http.StatusBadRequest, "Failed to read request body", err)
+			return
+		}
+
+		mac := hmac.New(sha256.New, []byte(h.webhookSecret))
+		mac.Write(bodyBytes)
+		expectedMAC := hex.EncodeToString(mac.Sum(nil))
+
+		if !hmac.Equal([]byte(signature), []byte(expectedMAC)) {
+			pkg.Error(c, http.StatusUnauthorized, "Invalid signature", nil)
+			return
+		}
+
+		// Restore request body for ShouldBindJSON
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	}
+
 	var payload BankTopUpWebhookPayload
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		pkg.Error(c, http.StatusBadRequest, "Invalid bank webhook payload", err)
 		return
 	}
 
+	// 2. Idempotency Check
+	// Note: We'll implement checking in the service logic directly
 	tx, err := h.service.ProcessBankWebhook(c.Request.Context(), &payload)
 	if err != nil {
+		// Distinguish between conflict/duplicate and normal errors if possible, 
+		// but since the requirement says return 200 with data if idempotent, we'll need service to handle it
+		// Let's modify the service to return a specific error or the existing tx.
+		if err.Error() == "idempotent" {
+			// tx will contain the existing transaction
+			pkg.Success(c, http.StatusOK, "Bank top-up already processed (idempotent)", tx)
+			return
+		}
 		pkg.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}

@@ -30,7 +30,7 @@ type Service interface {
 	DisposeFoodSample(ctx context.Context, id uuid.UUID, req *DisposeFoodSampleRequest, userID uuid.UUID) (*models.FoodSample, error)
 
 	// Dashboard
-	GetDashboardSummary(ctx context.Context) (*QCDashboardSummary, error)
+	GetDashboardSummary(ctx context.Context, periodStart, periodEnd string) (*QCDashboardSummary, error)
 }
 
 type service struct {
@@ -242,8 +242,24 @@ func (s *service) DisposeFoodSample(ctx context.Context, id uuid.UUID, req *Disp
 	return item, nil
 }
 
-func (s *service) GetDashboardSummary(ctx context.Context) (*QCDashboardSummary, error) {
-	hygieneList, _ := s.repo.ListHygieneChecklists(ctx, 100)
+func (s *service) GetDashboardSummary(ctx context.Context, periodStart, periodEnd string) (*QCDashboardSummary, error) {
+	now := time.Now()
+	
+	start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	end := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, now.Location())
+
+	if periodStart != "" {
+		if d, err := time.Parse("2006-01-02", periodStart); err == nil {
+			start = time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, d.Location())
+		}
+	}
+	if periodEnd != "" {
+		if d, err := time.Parse("2006-01-02", periodEnd); err == nil {
+			end = time.Date(d.Year(), d.Month(), d.Day(), 23, 59, 59, 999999999, d.Location())
+		}
+	}
+
+	hygieneList, _ := s.repo.ListHygieneChecklistsInPeriod(ctx, start, end)
 	tempLogs, _ := s.repo.ListTemperatureLogs(ctx, "", false, 10)
 	alertLogs, _ := s.repo.ListTemperatureLogs(ctx, "", true, 100)
 	orgTests, _ := s.repo.ListOrganolepticTests(ctx, 10)
@@ -258,7 +274,7 @@ func (s *service) GetDashboardSummary(ctx context.Context) (*QCDashboardSummary,
 		avgScore = total / float64(len(orgTests))
 	}
 
-	now := time.Now()
+	now = time.Now()
 	var pendingDisposal []models.FoodSample
 	for _, sample := range activeSamples {
 		if sample.RetentionUntil.Before(now) {

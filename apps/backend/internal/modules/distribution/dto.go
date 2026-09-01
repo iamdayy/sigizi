@@ -57,12 +57,17 @@ type CreateDistributionRequest struct {
 	Notes               string                          `json:"notes"`
 }
 
+type ItemReceivedInput struct {
+	ItemID           uuid.UUID `json:"item_id" binding:"required"`
+	PortionsReceived int       `json:"portions_received" binding:"required,min=0"`
+}
+
 type UpdateDistributionStatusRequest struct {
 	Status             models.DistributionStatus `json:"status" binding:"required"`
 	RecipientName      string                    `json:"recipient_name"`
 	RecipientTitle     string                    `json:"recipient_title"`
 	ProofOfDeliveryURL string                    `json:"proof_of_delivery_url"`
-	PortionsReceived   int                       `json:"portions_received"`
+	Items              []ItemReceivedInput       `json:"items"`
 	Notes              string                    `json:"notes"`
 }
 

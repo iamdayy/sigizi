@@ -148,7 +148,7 @@ func (s *service) GetNavigation(ctx context.Context, role models.UserRole) []Nav
 			Title: "Bahan Baku & Stok",
 			Href:  "/dashboard/inventory",
 			Icon:  "Boxes",
-			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleWarehouse},
+			Roles: []models.UserRole{models.RoleAdmin, models.RoleHeadSPPG, models.RoleWarehouse, models.RoleNutritionist},
 		},
 		{
 			Title: "Menu",

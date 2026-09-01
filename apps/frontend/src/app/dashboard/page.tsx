@@ -78,13 +78,10 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-brand-dark tracking-tight flex items-center gap-2.5">
-            Dashboard Operasional &amp; Keuangan SPPG
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-light/40 text-brand-primary">
-              Live Real-Time
-            </span>
+            Dashboard SPPG
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Pemantauan Penyaluran MBG, Pergerakan Stok FEFO, dan Realisasi Gross Margin Biaya Bahan
+            Pemantauan Penyaluran MBG, Pergerakan Stok, dan Realisasi Gross Margin Biaya Bahan
           </p>
         </div>
 
@@ -251,8 +248,8 @@ export default function DashboardPage() {
                           b.is_margin_critical
                             ? 'text-rose-500'
                             : b.margin_percentage >= 20
-                            ? 'text-emerald-500'
-                            : 'text-amber-500'
+                              ? 'text-emerald-500'
+                              : 'text-amber-500'
                         }
                       >
                         {b.margin_percentage.toFixed(1)}%

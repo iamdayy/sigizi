@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -12,6 +14,8 @@ type Config struct {
 	AppEnv   string
 	AppPort  string
 	Timezone string
+	
+	AllowedOrigins []string
 
 	// Database
 	DBHost     string
@@ -26,6 +30,9 @@ type Config struct {
 	JWTRefreshSecret          string
 	JWTAccessDurationMinutes  int
 	JWTRefreshDurationDays    int
+
+	// Webhooks
+	BankWebhookSecret string
 
 	// Storage (R2 / S3 / Local)
 	StorageDriver     string
@@ -48,17 +55,21 @@ func LoadConfig() (*Config, error) {
 		AppPort:  getEnv("APP_PORT", "8080"),
 		Timezone: getEnv("TZ", "Asia/Jakarta"),
 
+		AllowedOrigins: strings.Split(getEnv("ALLOWED_ORIGINS", "https://production-frontend.com"), ","),
+
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
 		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "postgres123"),
+		DBPassword: getEnv("DB_PASSWORD", ""),
 		DBName:     getEnv("DB_NAME", "mbg_sppg_db"),
 		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
 
-		JWTAccessSecret:          getEnv("JWT_ACCESS_SECRET", "mbg_access_secret_super_secure_key_2026_x9281"),
-		JWTRefreshSecret:         getEnv("JWT_REFRESH_SECRET", "mbg_refresh_secret_super_secure_key_2026_z8192"),
+		JWTAccessSecret:          getEnv("JWT_ACCESS_SECRET", ""),
+		JWTRefreshSecret:         getEnv("JWT_REFRESH_SECRET", ""),
 		JWTAccessDurationMinutes: getEnvAsInt("JWT_ACCESS_DURATION_MINUTES", 15),
 		JWTRefreshDurationDays:   getEnvAsInt("JWT_REFRESH_DURATION_DAYS", 7),
+
+		BankWebhookSecret:        getEnv("BANK_WEBHOOK_SECRET", ""),
 
 		StorageDriver:     getEnv("STORAGE_DRIVER", "local"),
 		S3Endpoint:        getEnv("S3_ENDPOINT", ""),
@@ -68,6 +79,24 @@ func LoadConfig() (*Config, error) {
 		S3Region:          getEnv("S3_REGION", "auto"),
 		S3PublicBaseURL:   getEnv("S3_PUBLIC_BASE_URL", ""),
 		LocalStoragePath:  getEnv("LOCAL_STORAGE_PATH", "./uploads"),
+	}
+
+	if cfg.DBPassword == "" {
+		log.Fatal("DB_PASSWORD is required and must be set")
+	}
+
+	if cfg.JWTAccessSecret == "" {
+		log.Fatal("JWT_ACCESS_SECRET is required and must be set")
+	}
+	if len(cfg.JWTAccessSecret) < 32 {
+		log.Fatal("JWT_ACCESS_SECRET must be at least 32 characters long")
+	}
+
+	if cfg.JWTRefreshSecret == "" {
+		log.Fatal("JWT_REFRESH_SECRET is required and must be set")
+	}
+	if len(cfg.JWTRefreshSecret) < 32 {
+		log.Fatal("JWT_REFRESH_SECRET must be at least 32 characters long")
 	}
 
 	return cfg, nil

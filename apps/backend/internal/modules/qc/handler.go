@@ -48,7 +48,10 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup, authMW gin.HandlerFunc
 }
 
 func (h *Handler) GetDashboardSummary(c *gin.Context) {
-	summary, err := h.service.GetDashboardSummary(c.Request.Context())
+	periodStart := c.Query("period_start")
+	periodEnd := c.Query("period_end")
+
+	summary, err := h.service.GetDashboardSummary(c.Request.Context(), periodStart, periodEnd)
 	if err != nil {
 		pkg.Error(c, http.StatusInternalServerError, "Failed to retrieve QC summary", err)
 		return

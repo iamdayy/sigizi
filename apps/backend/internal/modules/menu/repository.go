@@ -10,6 +10,7 @@ import (
 
 type Repository interface {
 	GetDB() *gorm.DB
+	WithTx(tx *gorm.DB) Repository
 
 	// NutritionInfo
 	UpsertNutritionInfo(ctx context.Context, item *models.NutritionInfo) error
@@ -42,12 +43,16 @@ func (r *repository) GetDB() *gorm.DB {
 	return r.db
 }
 
+func (r *repository) WithTx(tx *gorm.DB) Repository {
+	return &repository{db: tx}
+}
+
 func (r *repository) UpsertNutritionInfo(ctx context.Context, item *models.NutritionInfo) error {
 	var existing models.NutritionInfo
 	err := r.db.WithContext(ctx).Where("item_id = ?", item.ItemID).First(&existing).Error
 	if err == nil {
 		item.ID = existing.ID
-		return r.db.WithContext(ctx).Save(item).Error
+		return r.db.WithContext(ctx).Model(&existing).Updates(item).Error
 	}
 	return r.db.WithContext(ctx).Create(item).Error
 }
@@ -100,21 +105,6 @@ func (r *repository) GetActiveMenuCycle(ctx context.Context) (*models.MenuCycle,
 		Where("is_active = true").
 		First(&cycle).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			// Fallback to the most recently created cycle if none is explicitly active
-			errLatest := r.db.WithContext(ctx).
-				Preload("ApprovedBy").
-				Preload("Items", func(db *gorm.DB) *gorm.DB {
-					return db.Order("day_number ASC")
-				}).
-				Preload("Items.Recipes").
-				Preload("Items.Recipes.Item").
-				Order("created_at DESC").
-				First(&cycle).Error
-			if errLatest == nil {
-				return &cycle, nil
-			}
-		}
 		return nil, err
 	}
 	return &cycle, nil
@@ -151,7 +141,9 @@ func (r *repository) UpsertMenuItem(ctx context.Context, item *models.MenuItem) 
 		First(&existing).Error
 	if err == nil {
 		item.ID = existing.ID
-		return r.db.WithContext(ctx).Save(item).Error
+		item.CreatedAt = existing.CreatedAt
+		item.CreatedBy = existing.CreatedBy
+		return r.db.WithContext(ctx).Model(&existing).Updates(item).Error
 	}
 	return r.db.WithContext(ctx).Create(item).Error
 }

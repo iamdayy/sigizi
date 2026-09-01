@@ -132,7 +132,10 @@ func (h *Handler) ListProductionBatches(c *gin.Context) {
 }
 
 func (h *Handler) GetDashboardStats(c *gin.Context) {
-	stats, err := h.service.GetDashboardStats(c.Request.Context())
+	periodStart := c.Query("period_start")
+	periodEnd := c.Query("period_end")
+
+	stats, err := h.service.GetDashboardStats(c.Request.Context(), periodStart, periodEnd)
 	if err != nil {
 		pkg.Error(c, http.StatusInternalServerError, "Failed to compute financial stats", err)
 		return

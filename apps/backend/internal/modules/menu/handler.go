@@ -33,7 +33,7 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup, authMW gin.HandlerFunc
 		menuGroup.GET("/cycles/:id", h.GetMenuCycle)
 		menuGroup.POST("/cycles/:id/items", middleware.RequireRole(models.RoleAdmin, models.RoleNutritionist, models.RoleHeadSPPG), h.UpsertMenuItem)
 		menuGroup.GET("/cycles/:id/summary", h.GetCycleNutritionSummary)
-		menuGroup.POST("/cycles/:id/approve", middleware.RequireRole(models.RoleAdmin, models.RoleNutritionist, models.RoleHeadSPPG), h.ApproveMenuCycle)
+		menuGroup.POST("/cycles/:id/approve", middleware.RequireRole(models.RoleAdmin, models.RoleHeadSPPG), h.ApproveMenuCycle)
 		menuGroup.POST("/cycles/:id/activate", middleware.RequireRole(models.RoleAdmin, models.RoleHeadSPPG), h.SetActiveMenuCycle)
 	}
 }
@@ -157,7 +157,12 @@ func (h *Handler) ApproveMenuCycle(c *gin.Context) {
 	}
 
 	var req ApproveMenuCycleRequest
-	_ = c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		if err.Error() != "EOF" {
+			pkg.Error(c, http.StatusBadRequest, "Invalid request payload", err)
+			return
+		}
+	}
 
 	userID, _ := c.Get("UserID")
 	cycle, err := h.service.ApproveMenuCycle(c.Request.Context(), cycleID, &req, userID.(uuid.UUID))
@@ -165,7 +170,7 @@ func (h *Handler) ApproveMenuCycle(c *gin.Context) {
 		pkg.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
-	pkg.Success(c, http.StatusOK, "Menu cycle approved by Nutritionist", cycle)
+	pkg.Success(c, http.StatusOK, "Menu cycle approved", cycle)
 }
 
 func (h *Handler) SetActiveMenuCycle(c *gin.Context) {

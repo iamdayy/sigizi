@@ -46,6 +46,7 @@ type Item struct {
 	Name              string       `gorm:"type:varchar(255);not null" json:"name"`
 	Category          ItemCategory `gorm:"type:varchar(32);not null" json:"category"`
 	Unit              string       `gorm:"type:varchar(32);not null" json:"unit"` // e.g. "kg", "gram", "pcs"
+	GramsPerUnit      float64      `gorm:"type:numeric(15,4);not null;default:1" json:"grams_per_unit"` // Used for converting recipe portions to inventory units
 	MinStockThreshold float64      `gorm:"type:numeric(15,4);not null;default:0" json:"min_stock_threshold"`
 	IsPerishable      bool         `gorm:"type:boolean;not null;default:true" json:"is_perishable"`
 	Batches           []ItemBatch  `gorm:"foreignKey:ItemID" json:"batches,omitempty"`

@@ -39,10 +39,17 @@ export default function MenuPlanningPage() {
   const [isCreateCycleModalOpen, setIsCreateCycleModalOpen] = useState(false);
 
   // Create Cycle Form State
+  const today = new Date();
+  const formatYMD = (date: Date) => date.toISOString().split('T')[0];
+  const nextMonth = new Date(today);
+  nextMonth.setDate(nextMonth.getDate() + 20);
+
   const [newCycleName, setNewCycleName] = useState('Siklus Menu Baru');
-  const [newCycleStartDate, setNewCycleStartDate] = useState('2026-09-01');
-  const [newCycleEndDate, setNewCycleEndDate] = useState('2026-09-20');
+  const [newCycleStartDate, setNewCycleStartDate] = useState(formatYMD(today));
+  const [newCycleEndDate, setNewCycleEndDate] = useState(formatYMD(nextMonth));
   const [newCycleNotes, setNewCycleNotes] = useState('');
+  
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // All cycles
   const { data: allCycles } = useQuery<MenuCycle[]>({
@@ -87,11 +94,12 @@ export default function MenuPlanningPage() {
   const [mealDesc, setMealDesc] = useState('Menu Gizi Seimbang MBG Hari 1 - Tinggi Protein & Serat');
   const [includesMilk, setIncludesMilk] = useState(true);
   const [milkType, setMilkType] = useState('UHT');
-  const [recipeIngredients, setRecipeIngredients] = useState<Array<{ item_id: string; qty_per_portion_gram: number }>>([
-    { item_id: 'b0000000-0000-0000-0000-000000000004', qty_per_portion_gram: 100 }, // Beras (100g)
-    { item_id: 'b0000000-0000-0000-0000-000000000002', qty_per_portion_gram: 75 },  // Ayam (75g)
-    { item_id: 'b0000000-0000-0000-0000-000000000005', qty_per_portion_gram: 50 },  // Bayam (50g)
-  ]);
+  const [recipeIngredients, setRecipeIngredients] = useState<Array<{ item_id: string; qty_per_portion_gram: number }>>([]);
+
+  const handleMutationError = (error: any) => {
+    setActionError(error?.response?.data?.message || error.message || 'Terjadi kesalahan sistem');
+    setTimeout(() => setActionError(null), 8000);
+  };
 
   // Mutations
   const createCycleMutation = useMutation({
@@ -108,7 +116,9 @@ export default function MenuPlanningPage() {
       queryClient.invalidateQueries({ queryKey: ['menu-cycle-active'] });
       queryClient.invalidateQueries({ queryKey: ['menu-cycles'] });
       setIsCreateCycleModalOpen(false);
+      setActionError(null);
     },
+    onError: handleMutationError,
   });
 
   const saveMenuItemMutation = useMutation({
@@ -127,7 +137,9 @@ export default function MenuPlanningPage() {
       queryClient.invalidateQueries({ queryKey: ['menu-cycle-active'] });
       queryClient.invalidateQueries({ queryKey: ['menu-cycle-summary'] });
       setIsModalOpen(false);
+      setActionError(null);
     },
+    onError: handleMutationError,
   });
 
   const approveCycleMutation = useMutation({
@@ -139,7 +151,9 @@ export default function MenuPlanningPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['menu-cycle-active'] });
+      setActionError(null);
     },
+    onError: handleMutationError,
   });
 
   const currentItem = activeCycle?.items?.find((it) => it.day_number === selectedDay);
@@ -174,6 +188,14 @@ export default function MenuPlanningPage() {
 
   return (
     <div className="space-y-6">
+      {/* Global Action Error Alert */}
+      {actionError && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <p>{actionError}</p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -543,13 +565,6 @@ export default function MenuPlanningPage() {
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
-                  
-                  {/* Stock Warning Indicator */}
-                  {stockItem && stockItem.total_stock < ingredient.qty_per_portion_gram && (
-                    <div className="absolute right-12 top-[-10px] bg-rose-50 border border-rose-200 text-rose-600 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                      Stok Kurang
-                    </div>
-                  )}
                 </div>
               );
             })}

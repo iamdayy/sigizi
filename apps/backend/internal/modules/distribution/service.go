@@ -234,8 +234,26 @@ func (s *service) UpdateDistributionStatus(ctx context.Context, id uuid.UUID, re
 	if req.Status == models.DistStatusDelivered {
 		now := time.Now()
 		dist.ReceivedAt = &now
-		if req.PortionsReceived > 0 && len(dist.Items) > 0 {
-			dist.Items[0].PortionsReceived = req.PortionsReceived
+		if len(req.Items) > 0 {
+			var totalReceived int
+			for _, itemInput := range req.Items {
+				found := false
+				for i, existingItem := range dist.Items {
+					if existingItem.ID == itemInput.ItemID {
+						dist.Items[i].PortionsReceived = itemInput.PortionsReceived
+						totalReceived += itemInput.PortionsReceived
+						found = true
+						break
+					}
+				}
+				if !found {
+					return nil, fmt.Errorf("item_id %s not found in this distribution", itemInput.ItemID)
+				}
+			}
+			dist.TotalPortions = totalReceived
+		} else {
+			// If no specific item received data provided, we could assume they received all sent.
+			// But for strictness, we just keep the existing default if nothing provided.
 		}
 	}
 
@@ -297,7 +315,11 @@ func (s *service) GenerateBAST(ctx context.Context, req *BASTGenerateRequest, us
 
 	sppgHead := req.SPPGHeadName
 	if sppgHead == "" {
-		sppgHead = "Dr. Siti Nurhaliza (Kepala SPPG)"
+		var user models.User
+		if err := s.repo.GetDB().WithContext(ctx).Where("role = ? AND is_active = ?", models.RoleHeadSPPG, true).First(&user).Error; err != nil {
+			return nil, fmt.Errorf("failed to find active HEAD_SPPG for default head name: %w", err)
+		}
+		sppgHead = user.FullName
 	}
 
 	repName := req.RecipientRepresentativeName

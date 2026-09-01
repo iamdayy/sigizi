@@ -80,6 +80,10 @@ func (s *service) CreateMenuCycle(ctx context.Context, req *CreateMenuCycleReque
 		return nil, fmt.Errorf("invalid end_date: %w", err)
 	}
 
+	if endDate.Before(startDate) {
+		return nil, fmt.Errorf("end_date cannot be earlier than start_date")
+	}
+
 	totalDays := req.TotalDays
 	if totalDays <= 0 {
 		totalDays = 20
@@ -122,6 +126,20 @@ func (s *service) ApproveMenuCycle(ctx context.Context, id uuid.UUID, req *Appro
 		return nil, fmt.Errorf("menu cycle not found: %w", err)
 	}
 
+	if cycle.CreatedBy != nil && *cycle.CreatedBy == userID {
+		return nil, fmt.Errorf("tidak bisa menyetujui siklus menu buatan sendiri")
+	}
+
+	if len(cycle.Items) != cycle.TotalDays {
+		return nil, fmt.Errorf("cannot approve cycle: not all %d days have menus configured", cycle.TotalDays)
+	}
+
+	for _, item := range cycle.Items {
+		if !item.IsAKGCompliant {
+			return nil, fmt.Errorf("cannot approve cycle: day %d is not AKG compliant", item.DayNumber)
+		}
+	}
+
 	now := time.Now()
 	cycle.ApprovedByID = &userID
 	cycle.ApprovedAt = &now
@@ -161,7 +179,12 @@ func (s *service) UpsertMenuItem(ctx context.Context, cycleID uuid.UUID, req *Up
 
 	for i, r := range req.Recipes {
 		nutInfo, err := s.repo.GetNutritionInfoByItemID(ctx, r.ItemID)
-		if err == nil && nutInfo != nil {
+		if err != nil {
+			// Gracefully handle missing nutrition info instead of crashing,
+			// allowing the menu to be created with 0 macros for this item.
+			nutInfo = nil
+		}
+		if nutInfo != nil {
 			factor := r.QtyPerPortionGram / 100.0
 			totalCalories += nutInfo.CaloriesPer100g * factor
 			totalProtein += nutInfo.ProteinPer100g * factor
@@ -212,12 +235,13 @@ func (s *service) UpsertMenuItem(ctx context.Context, cycleID uuid.UUID, req *Up
 	}
 
 	err = s.repo.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := s.repo.UpsertMenuItem(ctx, menuItem); err != nil {
+		txRepo := s.repo.WithTx(tx)
+		if err := txRepo.UpsertMenuItem(ctx, menuItem); err != nil {
 			return err
 		}
 
 		// Re-assign recipes
-		_ = s.repo.DeleteMenuItemRecipes(ctx, menuItem.ID)
+		_ = txRepo.DeleteMenuItemRecipes(ctx, menuItem.ID)
 		for i := range recipes {
 			recipes[i].MenuItemID = menuItem.ID
 			recipes[i].CreatedBy = &userID

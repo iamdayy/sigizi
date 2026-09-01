@@ -17,10 +17,11 @@ type Repository interface {
 	ListVirtualAccounts(ctx context.Context) ([]models.VirtualAccount, error)
 	GetVirtualAccountByID(ctx context.Context, id uuid.UUID) (*models.VirtualAccount, error)
 	GetVirtualAccountByNumber(ctx context.Context, accNum string) (*models.VirtualAccount, error)
-	UpdateVirtualAccount(ctx context.Context, va *models.VirtualAccount) error
+	UpdateVirtualAccount(ctx context.Context, tx *gorm.DB, va *models.VirtualAccount) error
 
 	// VA Transactions
-	CreateVATransaction(ctx context.Context, tx *models.VATransaction) error
+	GetVATransactionByReference(ctx context.Context, ref string) (*models.VATransaction, error)
+	CreateVATransaction(ctx context.Context, tx *gorm.DB, vaTx *models.VATransaction) error
 	ListVATransactions(ctx context.Context, vaID uuid.UUID, limit int) ([]models.VATransaction, error)
 
 	// Generated Reports
@@ -73,12 +74,29 @@ func (r *repository) GetVirtualAccountByNumber(ctx context.Context, accNum strin
 	return &va, nil
 }
 
-func (r *repository) UpdateVirtualAccount(ctx context.Context, va *models.VirtualAccount) error {
-	return r.db.WithContext(ctx).Save(va).Error
+func (r *repository) UpdateVirtualAccount(ctx context.Context, tx *gorm.DB, va *models.VirtualAccount) error {
+	db := r.db
+	if tx != nil {
+		db = tx
+	}
+	return db.WithContext(ctx).Save(va).Error
 }
 
-func (r *repository) CreateVATransaction(ctx context.Context, tx *models.VATransaction) error {
-	return r.db.WithContext(ctx).Create(tx).Error
+func (r *repository) GetVATransactionByReference(ctx context.Context, ref string) (*models.VATransaction, error) {
+	var tx models.VATransaction
+	err := r.db.WithContext(ctx).Where("reference_number = ?", ref).First(&tx).Error
+	if err != nil {
+		return nil, err
+	}
+	return &tx, nil
+}
+
+func (r *repository) CreateVATransaction(ctx context.Context, tx *gorm.DB, vaTx *models.VATransaction) error {
+	db := r.db
+	if tx != nil {
+		db = tx
+	}
+	return db.WithContext(ctx).Create(vaTx).Error
 }
 
 func (r *repository) ListVATransactions(ctx context.Context, vaID uuid.UUID, limit int) ([]models.VATransaction, error) {

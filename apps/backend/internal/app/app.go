@@ -80,7 +80,7 @@ func SetupApp(isServerless bool) *AppContainer {
 	// Reporting & Virtual Account
 	repRepo := reporting.NewRepository(db.DB)
 	repSvc := reporting.NewService(repRepo, storageSvc)
-	repHandler := reporting.NewHandler(repSvc)
+	repHandler := reporting.NewHandler(repSvc, cfg.BankWebhookSecret)
 
 	// 5. Setup HTTP Engine & Middlewares
 	if cfg.AppEnv == "production" || isServerless {
@@ -90,7 +90,7 @@ func SetupApp(isServerless bool) *AppContainer {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.TraceID())
-	router.Use(middleware.CORS()) // Ensure CORS is correctly configured for Vercel
+	router.Use(middleware.CORS(cfg.AllowedOrigins)) // Ensure CORS is correctly configured for Vercel
 
 	// Rate Limiter: 100 requests/sec with burst of 200 per IP
 	// For serverless, this will only rate limit per instance, which is fine.

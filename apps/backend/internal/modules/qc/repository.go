@@ -2,6 +2,7 @@ package qc
 
 import (
 	"context"
+	"time"
 
 	"github.com/daydev/mbg-system/backend/internal/models"
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ type Repository interface {
 	// Hygiene
 	CreateHygieneChecklist(ctx context.Context, item *models.HygieneChecklist) error
 	ListHygieneChecklists(ctx context.Context, limit int) ([]models.HygieneChecklist, error)
+	ListHygieneChecklistsInPeriod(ctx context.Context, start time.Time, end time.Time) ([]models.HygieneChecklist, error)
 	GetHygieneChecklistByID(ctx context.Context, id uuid.UUID) (*models.HygieneChecklist, error)
 
 	// Temperature Logs
@@ -55,6 +57,16 @@ func (r *repository) ListHygieneChecklists(ctx context.Context, limit int) ([]mo
 		query = query.Limit(limit)
 	}
 	err := query.Find(&list).Error
+	return list, err
+}
+
+func (r *repository) ListHygieneChecklistsInPeriod(ctx context.Context, start time.Time, end time.Time) ([]models.HygieneChecklist, error) {
+	var list []models.HygieneChecklist
+	err := r.db.WithContext(ctx).
+		Preload("Inspector").
+		Where("inspection_date BETWEEN ? AND ?", start, end).
+		Order("inspection_date DESC, created_at DESC").
+		Find(&list).Error
 	return list, err
 }
 

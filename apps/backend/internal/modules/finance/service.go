@@ -25,7 +25,7 @@ type Service interface {
 	ListProductionBatches(ctx context.Context, limit int) ([]models.ProductionBatch, error)
 
 	// Dashboard Analytics
-	GetDashboardStats(ctx context.Context) (*FinancialDashboardStats, error)
+	GetDashboardStats(ctx context.Context, periodStart, periodEnd string) (*FinancialDashboardStats, error)
 
 	// Daily Reconciliation
 	PerformDailyReconciliation(ctx context.Context, date time.Time, triggeredBy *uuid.UUID) (*ReconciliationReport, error)
@@ -136,12 +136,24 @@ func (s *service) ProduceMealBatch(ctx context.Context, req *MealProductionReque
 	// Wrap entire FEFO stock depletion and production batch insertion in an ACID transaction
 	err := s.repo.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, ingInput := range req.Ingredients {
+			// Fetch Item to get GramsPerUnit for conversion
+			item, err := s.inventorySvc.GetItem(ctx, ingInput.ItemID)
+			if err != nil {
+				return fmt.Errorf("failed to fetch ingredient '%s': %w", ingInput.ItemID, err)
+			}
+
+			if item.GramsPerUnit <= 0 {
+				return fmt.Errorf("item '%s' (%s) missing grams_per_unit conversion factor", item.Name, item.SKU)
+			}
+
+			unitQtyToDeplete := ingInput.QtyRequired / item.GramsPerUnit
+
 			stockOutReq := &inventory.StockOutRequest{
 				ItemID:        ingInput.ItemID,
-				RequestedQty:  ingInput.QtyRequired,
+				RequestedQty:  unitQtyToDeplete,
 				ReferenceType: models.RefMealProduction,
 				ReferenceID:   productionCode,
-				Notes:         fmt.Sprintf("Meal production: %s (%d portions)", req.MealName, req.TargetPortions),
+				Notes:         fmt.Sprintf("Meal production: %s (%d portions) - Converted %.2f grams to %.2f %s", req.MealName, req.TargetPortions, ingInput.QtyRequired, unitQtyToDeplete, item.Unit),
 			}
 
 			// Deplete ingredient using strict FEFO
@@ -233,8 +245,24 @@ func (s *service) ListProductionBatches(ctx context.Context, limit int) ([]model
 	return s.repo.ListProductionBatches(ctx, limit)
 }
 
-func (s *service) GetDashboardStats(ctx context.Context) (*FinancialDashboardStats, error) {
-	batches, err := s.repo.ListProductionBatches(ctx, 30)
+func (s *service) GetDashboardStats(ctx context.Context, periodStart, periodEnd string) (*FinancialDashboardStats, error) {
+	now := time.Now()
+	
+	start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	end := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, now.Location())
+
+	if periodStart != "" {
+		if d, err := time.Parse("2006-01-02", periodStart); err == nil {
+			start = time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, d.Location())
+		}
+	}
+	if periodEnd != "" {
+		if d, err := time.Parse("2006-01-02", periodEnd); err == nil {
+			end = time.Date(d.Year(), d.Month(), d.Day(), 23, 59, 59, 999999999, d.Location())
+		}
+	}
+
+	batches, err := s.repo.ListProductionBatchesInPeriod(ctx, start, end)
 	if err != nil {
 		return nil, err
 	}

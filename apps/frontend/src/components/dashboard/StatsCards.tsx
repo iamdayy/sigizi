@@ -24,7 +24,7 @@ export default function StatsCards({
 }: StatsCardsProps) {
   const cards = [
     {
-      title: 'Total Porsi MBG Diproduksi',
+      title: 'Total Porsi Diproduksi',
       value: `${totalPortions.toLocaleString('id-ID')} Porsi`,
       subtext: 'Bulan Berjalan',
       icon: Utensils,
@@ -32,7 +32,7 @@ export default function StatsCards({
       iconColor: 'text-blue-400',
     },
     {
-      title: 'Total Alokasi Pendapatan',
+      title: 'Total Pendapatan',
       value: formatIDR(totalRevenue),
       subtext: 'Klaim Penyaluran SPPG',
       icon: DollarSign,
@@ -48,7 +48,7 @@ export default function StatsCards({
       iconColor: 'text-purple-400',
     },
     {
-      title: 'Batch Aktif (FEFO Logistik)',
+      title: 'Batch Aktif',
       value: `${activeBatchCount} Batch`,
       subtext: lowStockItemCount > 0 ? `${lowStockItemCount} bahan stok kritis` : 'Stok dalam batas aman',
       icon: Boxes,

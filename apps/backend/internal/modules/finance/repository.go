@@ -25,6 +25,7 @@ type Repository interface {
 	// Production Batches
 	CreateProductionBatch(ctx context.Context, tx *gorm.DB, batch *models.ProductionBatch) error
 	ListProductionBatches(ctx context.Context, limit int) ([]models.ProductionBatch, error)
+	ListProductionBatchesInPeriod(ctx context.Context, start time.Time, end time.Time) ([]models.ProductionBatch, error)
 	GetProductionBatchByID(ctx context.Context, id uuid.UUID) (*models.ProductionBatch, error)
 
 	// Aggregations for Daily Reconciliation & Dashboard
@@ -106,6 +107,18 @@ func (r *repository) ListProductionBatches(ctx context.Context, limit int) ([]mo
 		query = query.Limit(limit)
 	}
 	err := query.Find(&batches).Error
+	return batches, err
+}
+
+func (r *repository) ListProductionBatchesInPeriod(ctx context.Context, start time.Time, end time.Time) ([]models.ProductionBatch, error) {
+	var batches []models.ProductionBatch
+	err := r.db.WithContext(ctx).
+		Preload("Ingredients").
+		Preload("Ingredients.Item").
+		Preload("Ingredients.ItemBatch").
+		Where("production_date BETWEEN ? AND ?", start, end).
+		Order("production_date DESC, created_at DESC").
+		Find(&batches).Error
 	return batches, err
 }
 

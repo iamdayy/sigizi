@@ -1,73 +1,227 @@
 package menu
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/daydev/mbg-system/backend/internal/models"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+	"gorm.io/driver/sqlite"
 )
 
-func TestAKGCalculationLogic(t *testing.T) {
-	// 1. Setup sample items with TKPI nutritional profiles
+type mockMenuRepo struct {
+	db *gorm.DB
+	cycle *models.MenuCycle
+	nutritions map[uuid.UUID]*models.NutritionInfo
+	menuItem *models.MenuItem
+}
+
+func (m *mockMenuRepo) GetDB() *gorm.DB { return m.db }
+func (m *mockMenuRepo) WithTx(tx *gorm.DB) Repository { return m }
+
+func (m *mockMenuRepo) UpsertNutritionInfo(ctx context.Context, item *models.NutritionInfo) error { return nil }
+func (m *mockMenuRepo) GetNutritionInfoByItemID(ctx context.Context, itemID uuid.UUID) (*models.NutritionInfo, error) {
+	if n, ok := m.nutritions[itemID]; ok {
+		return n, nil
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+func (m *mockMenuRepo) ListNutritionInfo(ctx context.Context) ([]models.NutritionInfo, error) { return nil, nil }
+
+func (m *mockMenuRepo) CreateMenuCycle(ctx context.Context, cycle *models.MenuCycle) error { return nil }
+func (m *mockMenuRepo) GetMenuCycleByID(ctx context.Context, id uuid.UUID) (*models.MenuCycle, error) {
+	return m.cycle, nil
+}
+func (m *mockMenuRepo) GetActiveMenuCycle(ctx context.Context) (*models.MenuCycle, error) { return nil, nil }
+func (m *mockMenuRepo) ListMenuCycles(ctx context.Context) ([]models.MenuCycle, error) { return nil, nil }
+func (m *mockMenuRepo) UpdateMenuCycle(ctx context.Context, cycle *models.MenuCycle) error { return nil }
+func (m *mockMenuRepo) SetActiveMenuCycle(ctx context.Context, id uuid.UUID) error { return nil }
+
+func (m *mockMenuRepo) UpsertMenuItem(ctx context.Context, item *models.MenuItem) error {
+	m.menuItem = item
+	return nil
+}
+func (m *mockMenuRepo) GetMenuItemByID(ctx context.Context, id uuid.UUID) (*models.MenuItem, error) {
+	return m.menuItem, nil
+}
+func (m *mockMenuRepo) DeleteMenuItemRecipes(ctx context.Context, menuItemID uuid.UUID) error { return nil }
+
+
+func TestUpsertMenuItem_AKG(t *testing.T) {
 	riceID := uuid.New()
 	chickenID := uuid.New()
+	cycleID := uuid.New()
 
-	nutritions := map[uuid.UUID]*models.NutritionInfo{
-		riceID: {
-			CaloriesPer100g: 130.0,
-			ProteinPer100g:  2.7,
-			FatPer100g:      0.3,
-			CarbsPer100g:    28.0,
-			CalciumMg100g:   10.0,
+	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	
+	// Create tables manually to avoid gen_random_uuid() issues
+	db.Exec(`
+		CREATE TABLE menu_items (
+			id text PRIMARY KEY,
+			created_at datetime,
+			updated_at datetime,
+			deleted_at datetime,
+			created_by text,
+			updated_by text,
+			deleted_by text,
+			menu_cycle_id text,
+			day_number integer,
+			meal_name text,
+			description text,
+			includes_milk boolean,
+			milk_type text,
+			total_calories numeric,
+			total_protein numeric,
+			total_fat numeric,
+			total_carbs numeric,
+			akg_percentage numeric,
+			is_akg_compliant boolean
+		);
+	`)
+	db.Exec(`
+		CREATE TABLE menu_recipe_items (
+			id text PRIMARY KEY,
+			created_at datetime,
+			updated_at datetime,
+			deleted_at datetime,
+			created_by text,
+			updated_by text,
+			deleted_by text,
+			menu_item_id text,
+			item_id text,
+			qty_per_portion_gram numeric
+		);
+	`)
+
+	repo := &mockMenuRepo{
+		db: db,
+		cycle: &models.MenuCycle{
+			AuditModel: models.AuditModel{ID: cycleID},
+			TotalDays:  20,
+			StartDate:  time.Now(),
+			EndDate:    time.Now().Add(20 * 24 * time.Hour),
 		},
-		chickenID: {
-			CaloriesPer100g: 165.0,
-			ProteinPer100g:  31.0,
-			FatPer100g:      3.6,
-			CarbsPer100g:    0.0,
-			CalciumMg100g:   15.0,
+		nutritions: map[uuid.UUID]*models.NutritionInfo{
+			riceID: {
+				CaloriesPer100g: 130.0,
+				ProteinPer100g:  2.7,
+				FatPer100g:      0.3,
+				CarbsPer100g:    28.0,
+				CalciumMg100g:   10.0,
+			},
+			chickenID: {
+				CaloriesPer100g: 165.0,
+				ProteinPer100g:  31.0,
+				FatPer100g:      3.6,
+				CarbsPer100g:    0.0,
+				CalciumMg100g:   15.0,
+			},
 		},
 	}
 
-	// 2. Sample recipe: 100g rice + 75g chicken + Milk UHT
-	var totalCal, totalProt, totalFat, totalCarb, totalCalc float64
+	svc := NewService(repo)
 
-	// Rice (100g)
-	factorRice := 100.0 / 100.0
-	totalCal += nutritions[riceID].CaloriesPer100g * factorRice
-	totalProt += nutritions[riceID].ProteinPer100g * factorRice
-	totalFat += nutritions[riceID].FatPer100g * factorRice
-	totalCarb += nutritions[riceID].CarbsPer100g * factorRice
-	totalCalc += nutritions[riceID].CalciumMg100g * factorRice
-
-	// Chicken (75g)
-	factorChicken := 75.0 / 100.0
-	totalCal += nutritions[chickenID].CaloriesPer100g * factorChicken
-	totalProt += nutritions[chickenID].ProteinPer100g * factorChicken
-	totalFat += nutritions[chickenID].FatPer100g * factorChicken
-	totalCarb += nutritions[chickenID].CarbsPer100g * factorChicken
-	totalCalc += nutritions[chickenID].CalciumMg100g * factorChicken
-
-	// Milk UHT (130 kkal, 7g protein, 240mg calcium)
-	totalCal += 130.0
-	totalProt += 7.0
-	totalFat += 6.0
-	totalCarb += 10.0
-	totalCalc += 240.0
-
-	// 3. Assertions
-	if totalCal < 350.0 {
-		t.Errorf("Expected total calories to exceed 350 kkal, got %.2f", totalCal)
+	tests := []struct {
+		name string
+		req *UpsertMenuItemRequest
+		verify func(t *testing.T, item *models.MenuItem, err error)
+	}{
+		{
+			name: "Normal Meal with UHT Milk",
+			req: &UpsertMenuItemRequest{
+				DayNumber: 1,
+				MealName: "Rice + Chicken + Milk",
+				IncludesMilk: true,
+				MilkType: "UHT",
+				Recipes: []RecipeIngredientInput{
+					{ItemID: riceID, QtyPerPortionGram: 100},
+					{ItemID: chickenID, QtyPerPortionGram: 75},
+				},
+			},
+			verify: func(t *testing.T, item *models.MenuItem, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if item.TotalCalories < 350.0 {
+					t.Errorf("expected total calories > 350, got %v", item.TotalCalories)
+				}
+				if item.TotalProtein < 30.0 {
+					t.Errorf("expected total protein > 30, got %v", item.TotalProtein)
+				}
+			},
+		},
+		{
+			name: "AKG Zero (Nutrition Info Not Found)",
+			req: &UpsertMenuItemRequest{
+				DayNumber: 2,
+				MealName: "Unknown Meat",
+				IncludesMilk: false,
+				Recipes: []RecipeIngredientInput{
+					{ItemID: uuid.New(), QtyPerPortionGram: 100},
+				},
+			},
+			verify: func(t *testing.T, item *models.MenuItem, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if item.TotalCalories != 0 {
+					t.Errorf("expected 0 calories, got %v", item.TotalCalories)
+				}
+				if item.IsAKGCompliant {
+					t.Errorf("expected not compliant for 0 calories")
+				}
+			},
+		},
+		{
+			name: "AKG > 100% (Huge portions)",
+			req: &UpsertMenuItemRequest{
+				DayNumber: 3,
+				MealName: "Feast",
+				IncludesMilk: true,
+				Recipes: []RecipeIngredientInput{
+					{ItemID: chickenID, QtyPerPortionGram: 5000},
+				},
+			},
+			verify: func(t *testing.T, item *models.MenuItem, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if item.AKGPercentage <= 100.0 {
+					t.Errorf("expected AKG > 100%%, got %v%%", item.AKGPercentage)
+				}
+				// It shouldn't be compliant since it exceeds 35% target
+				if item.IsAKGCompliant {
+					t.Errorf("expected not compliant for > 35%% AKG target")
+				}
+			},
+		},
+		{
+			name: "Quantity 0",
+			req: &UpsertMenuItemRequest{
+				DayNumber: 4,
+				MealName: "Air",
+				IncludesMilk: false,
+				Recipes: []RecipeIngredientInput{
+					{ItemID: riceID, QtyPerPortionGram: 0},
+				},
+			},
+			verify: func(t *testing.T, item *models.MenuItem, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if item.TotalCalories != 0 {
+					t.Errorf("expected 0 calories for qty 0, got %v", item.TotalCalories)
+				}
+			},
+		},
 	}
 
-	if totalProt < 30.0 {
-		t.Errorf("Expected total protein to exceed 30g, got %.2f", totalProt)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			item, err := svc.UpsertMenuItem(context.Background(), cycleID, tt.req, uuid.New())
+			tt.verify(t, item, err)
+		})
 	}
-
-	if totalCalc < 200.0 {
-		t.Errorf("Expected calcium to exceed 200mg due to milk component, got %.2f", totalCalc)
-	}
-
-	t.Logf("Calculated Portioned Nutrition: Calories=%.1f kkal, Protein=%.1fg, Fat=%.1fg, Carbs=%.1fg, Calcium=%.1fmg",
-		totalCal, totalProt, totalFat, totalCarb, totalCalc)
 }

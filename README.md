@@ -93,6 +93,10 @@ pnpm dev
 # Frontend runs on http://localhost:3000
 ```
 
+### 🔐 Deployment & Security Note
+> [!WARNING]
+> The previous default secrets (`JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `DB_PASSWORD`) have been committed to the public git history. **YOU MUST ROTATE ALL SECRETS** in your `.env` file before deploying to production. The backend will now crash on startup if these are left empty or if the JWT secrets are less than 32 characters long.
+
 ### 4. Seeded Demo Accounts (Pre-configured):
 | Role | Email | Password |
 |---|---|---|

@@ -54,7 +54,7 @@ export default function AttendancePage() {
     queryFn: async () => {
       try {
         const res = await apiClient.get<ApiResponse<Attendance>>('/attendance/today');
-        return res.data.data;
+        return res.data.data ?? null;
       } catch (err) {
         return null;
       }
@@ -67,7 +67,7 @@ export default function AttendancePage() {
     queryKey: ['attendance-list'],
     queryFn: async () => {
       const res = await apiClient.get<ApiResponse<Attendance[]>>('/attendance');
-      return res.data.data;
+      return res.data.data ?? [];
     },
   });
 

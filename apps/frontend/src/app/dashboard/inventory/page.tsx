@@ -12,6 +12,8 @@ import {
   StockOutResult,
   ApiResponse,
   ItemCategory,
+  NutritionInfo,
+  UpsertNutritionInfoRequest,
 } from '@daydev/shared-types';
 import { formatIDR, formatDate } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
@@ -35,18 +37,21 @@ import {
   CheckCircle2,
   RefreshCw,
   Sparkles,
+  Activity,
+  Edit2,
 } from 'lucide-react';
 
 export default function InventoryPage() {
   const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'STOCK' | 'MOVEMENTS'>('STOCK');
+  const [activeTab, setActiveTab] = useState<'STOCK' | 'MOVEMENTS' | 'NUTRITION'>('STOCK');
 
   // Modal States
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isStockOutModalOpen, setIsStockOutModalOpen] = useState(false);
+  const [isNutritionModalOpen, setIsNutritionModalOpen] = useState(false);
   const [selectedItemForBatch, setSelectedItemForBatch] = useState<string>('');
   const [stockOutResult, setStockOutResult] = useState<StockOutResult | null>(null);
 
@@ -77,6 +82,18 @@ export default function InventoryPage() {
     notes: 'Pengeluaran uji coba stok FEFO',
   });
 
+  const [nutritionForm, setNutritionForm] = useState<UpsertNutritionInfoRequest>({
+    item_id: '',
+    calories_per_100g: 0,
+    protein_per_100g: 0,
+    fat_per_100g: 0,
+    carbs_per_100g: 0,
+    calcium_mg_100g: 0,
+    iron_mg_100g: 0,
+    fiber_per_100g: 0,
+    source: 'TKPI / Standar BGN',
+  });
+
   // 1. Fetch Inventory Stock Items
   const {
     data: items,
@@ -99,6 +116,15 @@ export default function InventoryPage() {
     queryKey: ['inventory-movements'],
     queryFn: async () => {
       const res = await apiClient.get<ApiResponse<StockMovement[]>>('/inventory/movements');
+      return res.data.data;
+    },
+  });
+
+  // 3. Fetch Nutrition Info
+  const { data: nutritionInfos, isLoading: isNutritionLoading } = useQuery<NutritionInfo[]>({
+    queryKey: ['nutrition-info'],
+    queryFn: async () => {
+      const res = await apiClient.get<ApiResponse<NutritionInfo[]>>('/menu/nutrition-info');
       return res.data.data;
     },
   });
@@ -146,6 +172,17 @@ export default function InventoryPage() {
     },
   });
 
+  const upsertNutritionMutation = useMutation({
+    mutationFn: async (payload: UpsertNutritionInfoRequest) => {
+      const res = await apiClient.post<ApiResponse<any>>('/menu/nutrition-info', payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nutrition-info'] });
+      setIsNutritionModalOpen(false);
+    },
+  });
+
   // Filter items
   const filteredItems = items?.filter((item) => {
     const matchesCategory = selectedCategory === 'ALL' || item.category === selectedCategory;
@@ -163,15 +200,12 @@ export default function InventoryPage() {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2 text-brand-primary text-xs font-semibold uppercase tracking-wider mb-1">
-            <Boxes className="w-4 h-4" />
-            <span>Manajemen Logistik & Bahan Baku</span>
+          <div className="flex items-center space-x-2 text-brand-primary text-2xl font-extrabold uppercase tracking-wider mb-1">
+            <Boxes className="w-10 h-10" />
+            <span>Manajemen Bahan Baku</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-brand-dark tracking-tight">
-            Inventaris & Pengeluaran FEFO
-          </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Pantau stok bahan makanan, prioritaskan batch terdekat expired (First Expired First Out), dan catat penerimaan.
+            Pantau stok bahan makanan, prioritaskan batch terdekat kedaluwarsa, dan catat penerimaan.
           </p>
         </div>
 
@@ -183,7 +217,7 @@ export default function InventoryPage() {
             onClick={() => setIsItemModalOpen(true)}
           >
             <Plus className="w-4 h-4 text-brand-primary" />
-            <span>Master Item Baru</span>
+            <span>Tambah Bahan Baku</span>
           </Button>
           <Button
             variant="primary"
@@ -196,7 +230,7 @@ export default function InventoryPage() {
             }}
           >
             <PackagePlus className="w-4 h-4" />
-            <span>Terima Batch Baru</span>
+            <span>Terima Batch Bahan Baku</span>
           </Button>
           <Button
             variant="danger"
@@ -220,7 +254,7 @@ export default function InventoryPage() {
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-slate-500 mb-2">
-              <span className="text-xs font-medium">Total Master Item</span>
+              <span className="text-xs font-medium">Total Bahan Baku</span>
               <Boxes className="w-4 h-4 text-brand-primary" />
             </div>
             <p className="text-2xl font-bold text-brand-dark">{items?.length || 0}</p>
@@ -231,7 +265,7 @@ export default function InventoryPage() {
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-slate-500 mb-2">
-              <span className="text-xs font-medium">Total Volume Stok Fisik</span>
+              <span className="text-xs font-medium">Total Stok Bahan Baku</span>
               <Layers className="w-4 h-4 text-emerald-600" />
             </div>
             <p className="text-2xl font-bold text-brand-dark">
@@ -257,26 +291,35 @@ export default function InventoryPage() {
       <div className="flex items-center space-x-2 border-b border-slate-200 pb-2">
         <button
           onClick={() => setActiveTab('STOCK')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center space-x-2 ${
-            activeTab === 'STOCK'
-              ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20'
-              : 'text-slate-500 hover:text-brand-dark'
-          }`}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center space-x-2 ${activeTab === 'STOCK'
+            ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20'
+            : 'text-slate-500 hover:text-brand-dark'
+            }`}
         >
           <Boxes className="w-4 h-4" />
-          <span>Daftar Stok Bahan & FEFO</span>
+          <span>Daftar Stok Bahan Baku</span>
         </button>
 
         <button
           onClick={() => setActiveTab('MOVEMENTS')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center space-x-2 ${
-            activeTab === 'MOVEMENTS'
-              ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20'
-              : 'text-slate-500 hover:text-brand-dark'
-          }`}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center space-x-2 ${activeTab === 'MOVEMENTS'
+            ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20'
+            : 'text-slate-500 hover:text-brand-dark'
+            }`}
         >
           <History className="w-4 h-4" />
-          <span>Audit Mutasi / Pergerakan Stok</span>
+          <span>Mutasi Pergerakan Stok</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('NUTRITION')}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center space-x-2 ${activeTab === 'NUTRITION'
+            ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20'
+            : 'text-slate-500 hover:text-brand-dark'
+            }`}
+        >
+          <Activity className="w-4 h-4" />
+          <span>Data Komposisi Nutrisi</span>
         </button>
       </div>
 
@@ -304,11 +347,10 @@ export default function InventoryPage() {
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
-                      selectedCategory === cat
-                        ? 'bg-brand-primary text-brand-dark shadow-sm'
-                        : 'bg-slate-100 text-slate-500 hover:text-brand-dark hover:bg-slate-100'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${selectedCategory === cat
+                      ? 'bg-brand-primary text-brand-dark shadow-sm'
+                      : 'bg-slate-100 text-slate-500 hover:text-brand-dark hover:bg-slate-100'
+                      }`}
                   >
                     {cat === 'ALL' ? 'Semua' : cat}
                   </button>
@@ -360,9 +402,8 @@ export default function InventoryPage() {
                       </div>
                       <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${
-                            item.is_low_stock ? 'bg-rose-500' : 'bg-emerald-500'
-                          }`}
+                          className={`h-full rounded-full ${item.is_low_stock ? 'bg-rose-500' : 'bg-emerald-500'
+                            }`}
                           style={{
                             width: `${Math.min(
                               100,
@@ -379,7 +420,7 @@ export default function InventoryPage() {
                     <div className="flex items-center space-x-1.5 text-xs text-slate-500">
                       <Calendar className="w-3.5 h-3.5 text-amber-600" />
                       <span>
-                        FEFO Exp:{' '}
+                        Exp:{' '}
                         <strong className="text-brand-dark">
                           {item.earliest_expiry ? formatDate(item.earliest_expiry) : 'Tidak ada'}
                         </strong>
@@ -469,6 +510,95 @@ export default function InventoryPage() {
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-slate-500">
                     Belum ada catatan mutasi stok.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      {/* TAB 3: NUTRITION VIEW */}
+      {activeTab === 'NUTRITION' && (
+        <Card>
+          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-brand-dark flex items-center gap-2">
+              <Activity className="w-4 h-4 text-emerald-500" />
+              Tabel Komposisi Pangan (Per 100g)
+            </h3>
+            <span className="text-xs text-slate-500">{items?.length || 0} bahan</span>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>SKU & Bahan</TableHead>
+                <TableHead>Kategori</TableHead>
+                <TableHead>Kalori (kkal)</TableHead>
+                <TableHead>Protein (g)</TableHead>
+                <TableHead>Lemak (g)</TableHead>
+                <TableHead>Karbo (g)</TableHead>
+                <TableHead>Lainnya</TableHead>
+                <TableHead>Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isItemsLoading || isNutritionLoading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-slate-500">
+                    Memuat data nutrisi...
+                  </TableCell>
+                </TableRow>
+              ) : items && items.length > 0 ? (
+                items.map((item) => {
+                  const nut = nutritionInfos?.find((n) => n.item_id === item.id);
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <div className="font-semibold text-brand-dark">{item.name}</div>
+                        <div className="text-[10px] text-slate-500 uppercase">{item.sku}</div>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={item.category} />
+                      </TableCell>
+                      <TableCell className="font-mono">{nut?.calories_per_100g || '-'}</TableCell>
+                      <TableCell className="font-mono">{nut?.protein_per_100g || '-'}</TableCell>
+                      <TableCell className="font-mono">{nut?.fat_per_100g || '-'}</TableCell>
+                      <TableCell className="font-mono">{nut?.carbs_per_100g || '-'}</TableCell>
+                      <TableCell className="text-[10px] text-slate-500">
+                        {nut?.calcium_mg_100g ? <div>Ca: {nut.calcium_mg_100g}mg</div> : null}
+                        {nut?.iron_mg_100g ? <div>Fe: {nut.iron_mg_100g}mg</div> : null}
+                        {nut?.fiber_per_100g ? <div>Serat: {nut.fiber_per_100g}g</div> : null}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setNutritionForm({
+                              item_id: item.id,
+                              calories_per_100g: nut?.calories_per_100g || 0,
+                              protein_per_100g: nut?.protein_per_100g || 0,
+                              fat_per_100g: nut?.fat_per_100g || 0,
+                              carbs_per_100g: nut?.carbs_per_100g || 0,
+                              calcium_mg_100g: nut?.calcium_mg_100g || 0,
+                              iron_mg_100g: nut?.iron_mg_100g || 0,
+                              fiber_per_100g: nut?.fiber_per_100g || 0,
+                              source: nut?.source || 'TKPI / Standar BGN',
+                            });
+                            setIsNutritionModalOpen(true);
+                          }}
+                        >
+                          <Edit2 className="w-4 h-4 text-slate-500 hover:text-brand-primary" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-slate-500">
+                    Belum ada master bahan terdaftar.
                   </TableCell>
                 </TableRow>
               )}
@@ -849,6 +979,170 @@ export default function InventoryPage() {
               disabled={stockOutMutation.isPending}
             >
               {stockOutMutation.isPending ? 'Memproses...' : 'Eksekusi Pengeluaran'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL 4: EDIT NUTRITION INFO */}
+      <Modal
+        isOpen={isNutritionModalOpen}
+        onClose={() => setIsNutritionModalOpen(false)}
+        title="Ubah Master Data Nutrisi (per 100g)"
+        description="Pembaruan data nutrisi akan memengaruhi perhitungan AKG di Siklus Menu yang menggunakan bahan ini."
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            upsertNutritionMutation.mutate(nutritionForm);
+          }}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Kalori (kkal)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                required
+                value={nutritionForm.calories_per_100g}
+                onChange={(e) =>
+                  setNutritionForm({ ...nutritionForm, calories_per_100g: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-brand-dark focus:outline-none focus:border-brand-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Protein (g)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                required
+                value={nutritionForm.protein_per_100g}
+                onChange={(e) =>
+                  setNutritionForm({ ...nutritionForm, protein_per_100g: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-brand-dark focus:outline-none focus:border-brand-primary"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Lemak (g)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                required
+                value={nutritionForm.fat_per_100g}
+                onChange={(e) =>
+                  setNutritionForm({ ...nutritionForm, fat_per_100g: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-brand-dark focus:outline-none focus:border-brand-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Karbohidrat (g)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                required
+                value={nutritionForm.carbs_per_100g}
+                onChange={(e) =>
+                  setNutritionForm({ ...nutritionForm, carbs_per_100g: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-brand-dark focus:outline-none focus:border-brand-primary"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Kalsium (mg)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={nutritionForm.calcium_mg_100g || 0}
+                onChange={(e) =>
+                  setNutritionForm({ ...nutritionForm, calcium_mg_100g: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-brand-dark focus:outline-none focus:border-brand-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Zat Besi (mg)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={nutritionForm.iron_mg_100g || 0}
+                onChange={(e) =>
+                  setNutritionForm({ ...nutritionForm, iron_mg_100g: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-brand-dark focus:outline-none focus:border-brand-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Serat (g)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={nutritionForm.fiber_per_100g || 0}
+                onChange={(e) =>
+                  setNutritionForm({ ...nutritionForm, fiber_per_100g: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-brand-dark focus:outline-none focus:border-brand-primary"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Sumber Referensi (Opsional)</label>
+            <input
+              type="text"
+              placeholder="Contoh: TKPI Kemenkes RI 2019"
+              value={nutritionForm.source}
+              onChange={(e) => setNutritionForm({ ...nutritionForm, source: e.target.value })}
+              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-brand-dark focus:outline-none focus:border-brand-primary"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200">
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => setIsNutritionModalOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              disabled={upsertNutritionMutation.isPending}
+            >
+              {upsertNutritionMutation.isPending ? 'Menyimpan...' : 'Simpan Nutrisi'}
             </Button>
           </div>
         </form>

@@ -124,12 +124,12 @@ func (s *service) RecordVATransaction(ctx context.Context, vaID uuid.UUID, req *
 	}
 
 	err = s.repo.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := s.repo.CreateVATransaction(ctx, vaTx); err != nil {
+		if err := s.repo.CreateVATransaction(ctx, tx, vaTx); err != nil {
 			return err
 		}
 		va.CurrentBalance = newBalance
 		va.UpdatedBy = &userID
-		return s.repo.UpdateVirtualAccount(ctx, va)
+		return s.repo.UpdateVirtualAccount(ctx, tx, va)
 	})
 
 	if err != nil {
@@ -144,6 +144,19 @@ func (s *service) ListVATransactions(ctx context.Context, vaID uuid.UUID, limit 
 }
 
 func (s *service) ProcessBankWebhook(ctx context.Context, payload *BankTopUpWebhookPayload) (*models.VATransaction, error) {
+	// 1. Idempotency Check
+	if payload.ReferenceNumber != "" {
+		existingTx, err := s.repo.GetVATransactionByReference(ctx, payload.ReferenceNumber)
+		if err == nil && existingTx != nil {
+			// Found existing transaction, return special error or handle it.
+			// The handler expects an error with text "idempotent" to return 200 OK.
+			// Let's attach the tx to a custom error or just change the handler logic.
+			// Wait, we need to return the transaction so handler can send it in response.
+			// Returning (existingTx, errors.New("idempotent")) is perfectly fine!
+			return existingTx, fmt.Errorf("idempotent")
+		}
+	}
+
 	va, err := s.repo.GetVirtualAccountByNumber(ctx, payload.AccountNumber)
 	if err != nil {
 		return nil, fmt.Errorf("virtual account not recognized: %w", err)
@@ -169,11 +182,11 @@ func (s *service) ProcessBankWebhook(ctx context.Context, payload *BankTopUpWebh
 	}
 
 	err = s.repo.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := s.repo.CreateVATransaction(ctx, vaTx); err != nil {
+		if err := s.repo.CreateVATransaction(ctx, tx, vaTx); err != nil {
 			return err
 		}
 		va.CurrentBalance = newBalance
-		return s.repo.UpdateVirtualAccount(ctx, va)
+		return s.repo.UpdateVirtualAccount(ctx, tx, va)
 	})
 
 	if err != nil {
@@ -196,7 +209,11 @@ func (s *service) GenerateReport(ctx context.Context, req *GenerateReportRequest
 
 	headName := req.HeadName
 	if headName == "" {
-		headName = "Dr. Siti Nurhaliza (Kepala SPPG)"
+		var user models.User
+		if err := s.repo.GetDB().WithContext(ctx).Where("role = ? AND is_active = ?", models.RoleHeadSPPG, true).First(&user).Error; err != nil {
+			return nil, fmt.Errorf("failed to find active HEAD_SPPG for default head name: %w", err)
+		}
+		headName = user.FullName
 	}
 
 	// 1. Gather distributions & journal records for period

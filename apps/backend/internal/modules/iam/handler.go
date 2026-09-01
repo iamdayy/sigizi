@@ -21,7 +21,9 @@ func NewHandler(service Service) *Handler {
 func (h *Handler) RegisterRoutes(router *gin.RouterGroup, authMW gin.HandlerFunc) {
 	authGroup := router.Group("/auth")
 	{
-		authGroup.POST("/login", h.Login)
+		// 5 requests per minute (5/60 RPS) per IP for login
+		loginLimiter := middleware.NewRateLimiter(5.0/60.0, 5)
+		authGroup.POST("/login", loginLimiter.Middleware(), h.Login)
 		authGroup.POST("/refresh", h.RefreshToken)
 		authGroup.POST("/logout", h.Logout)
 	}
@@ -194,9 +196,19 @@ func (h *Handler) GetTodayAttendance(c *gin.Context) {
 func (h *Handler) ListAttendances(c *gin.Context) {
 	dateStr := c.Query("date")
 	var userFilter *uuid.UUID
-	if userIDStr := c.Query("user_id"); userIDStr != "" {
-		if uid, err := uuid.Parse(userIDStr); err == nil {
-			userFilter = &uid
+
+	callerRole, _ := c.Get("UserRole")
+	callerID, _ := c.Get("UserID")
+
+	role := callerRole.(models.UserRole)
+	if role != models.RoleAdmin && role != models.RoleHeadSPPG {
+		uid := callerID.(uuid.UUID)
+		userFilter = &uid
+	} else {
+		if userIDStr := c.Query("user_id"); userIDStr != "" {
+			if uid, err := uuid.Parse(userIDStr); err == nil {
+				userFilter = &uid
+			}
 		}
 	}
 
