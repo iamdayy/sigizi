@@ -88,7 +88,7 @@ export default function DistributionPage() {
     status: 'DELIVERED',
     recipient_name: 'Drs. H. Bambang (Kepala Sekolah)',
     recipient_title: 'Kepala Sekolah',
-    portions_received: 250,
+    items: [],
     notes: 'Makanan diterima dalam kondisi higienis dan hangat.',
   });
 
@@ -400,7 +400,10 @@ export default function DistributionPage() {
                                   status: d.status,
                                   recipient_name: d.recipient_name || '',
                                   recipient_title: d.recipient_title || '',
-                                  portions_received: d.total_portions,
+                                  items: d.items?.map((item) => ({
+                                    item_id: item.id!,
+                                    portions_received: item.portions_sent,
+                                  })) || [],
                                   notes: d.notes || '',
                                 });
                                 setIsStatusModalOpen(true);
@@ -896,6 +899,49 @@ export default function DistributionPage() {
               />
             </div>
           </div>
+
+          {statusUpdateForm.status === 'DELIVERED' && statusUpdateForm.items && statusUpdateForm.items.length > 0 && (
+            <div className="space-y-3">
+              <label className="block text-xs font-semibold text-slate-600">
+                Detail Porsi Diterima
+              </label>
+              <div className="max-h-48 overflow-y-auto space-y-2 pr-2">
+                {statusUpdateForm.items.map((itemInput, index) => {
+                  const originalItem = selectedDelivery?.items.find((i) => i.id === itemInput.item_id);
+                  return (
+                    <div key={itemInput.item_id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                      <div className="flex justify-between items-start mb-2 gap-2">
+                        <span className="text-[11px] font-semibold text-brand-dark leading-tight">
+                          {originalItem?.meal_name}
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-500 whitespace-nowrap bg-white px-2 py-0.5 rounded border border-slate-100">
+                          Dikirim: {originalItem?.portions_sent}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-500 mb-1">Porsi Diterima:</label>
+                        <input
+                          type="number"
+                          min="0"
+                          required
+                          value={itemInput.portions_received}
+                          onChange={(e) => {
+                            const updated = [...(statusUpdateForm.items || [])];
+                            updated[index] = {
+                              ...updated[index],
+                              portions_received: parseInt(e.target.value) || 0,
+                            };
+                            setStatusUpdateForm({ ...statusUpdateForm, items: updated });
+                          }}
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs text-brand-dark focus:outline-none focus:border-brand-primary"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">

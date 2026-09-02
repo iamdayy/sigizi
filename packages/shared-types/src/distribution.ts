@@ -69,7 +69,7 @@ export interface UpdateDistributionStatusRequest {
   recipient_name?: string;
   recipient_title?: string;
   proof_of_delivery_url?: string;
-  portions_received?: number;
+  items?: { item_id: string; portions_received: number }[];
   notes?: string;
 }
 

@@ -99,6 +99,13 @@ func LoadConfig() (*Config, error) {
 		log.Fatal("JWT_REFRESH_SECRET must be at least 32 characters long")
 	}
 
+	if cfg.BankWebhookSecret == "" {
+		log.Fatal("BANK_WEBHOOK_SECRET is required and must be set")
+	}
+	if len(cfg.BankWebhookSecret) < 16 {
+		log.Fatal("BANK_WEBHOOK_SECRET must be at least 16 characters long")
+	}
+
 	return cfg, nil
 }
 

@@ -25,11 +25,11 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup, authMW gin.HandlerFunc
 	finGroup.Use(authMW)
 	{
 		// Accounts
-		finGroup.GET("/accounts", h.ListAccounts)
+		finGroup.GET("/accounts", middleware.RequireRole(models.RoleAdmin, models.RoleFinance, models.RoleHeadSPPG), h.ListAccounts)
 		finGroup.POST("/accounts", middleware.RequireRole(models.RoleAdmin, models.RoleFinance), h.CreateAccount)
 
 		// Journal Entries
-		finGroup.GET("/journal-entries", h.ListJournalEntries)
+		finGroup.GET("/journal-entries", middleware.RequireRole(models.RoleAdmin, models.RoleFinance, models.RoleHeadSPPG), h.ListJournalEntries)
 		finGroup.POST("/journal-entries", middleware.RequireRole(models.RoleAdmin, models.RoleFinance), h.CreateJournalEntry)
 
 		// Production & Dynamic COGS
@@ -37,7 +37,7 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup, authMW gin.HandlerFunc
 		finGroup.GET("/production", h.ListProductionBatches)
 
 		// Analytics & Reconciliation
-		finGroup.GET("/dashboard", h.GetDashboardStats)
+		finGroup.GET("/dashboard", middleware.RequireRole(models.RoleAdmin, models.RoleFinance, models.RoleHeadSPPG), h.GetDashboardStats)
 		finGroup.POST("/reconcile-daily", middleware.RequireRole(models.RoleAdmin, models.RoleFinance), h.TriggerDailyReconciliation)
 	}
 }
