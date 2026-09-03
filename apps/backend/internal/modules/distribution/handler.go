@@ -44,6 +44,9 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup, authMW gin.HandlerFunc
 		distGroup.GET("/bast/preview", h.PreviewBAST)
 		distGroup.POST("/bast/generate", middleware.RequireRole(models.RoleAdmin, models.RoleFinance, models.RoleHeadSPPG), h.GenerateBAST)
 		distGroup.GET("/bast/documents", h.ListBASTDocuments)
+
+		// Tracking
+		distGroup.POST("/distributions/:id/location", middleware.RequireRole(models.RoleAdmin, models.RoleDriver), h.RecordDriverLocation)
 	}
 }
 
@@ -241,4 +244,27 @@ func (h *Handler) ListBASTDocuments(c *gin.Context) {
 	}
 
 	pkg.Success(c, http.StatusOK, "BAST documents archive retrieved", docs)
+}
+
+func (h *Handler) RecordDriverLocation(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		pkg.Error(c, http.StatusBadRequest, "Invalid distribution ID", err)
+		return
+	}
+
+	var req DriverLocationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		pkg.Error(c, http.StatusBadRequest, "Invalid location payload", err)
+		return
+	}
+
+	userID, _ := c.Get("UserID")
+	if err := h.service.RecordDriverLocation(c.Request.Context(), id, &req, userID.(uuid.UUID)); err != nil {
+		pkg.Error(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	pkg.Success(c, http.StatusOK, "Driver location recorded successfully", nil)
 }

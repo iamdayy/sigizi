@@ -28,6 +28,9 @@ type Service interface {
 	PreviewBAST(ctx context.Context, dpID uuid.UUID, periodStartStr, periodEndStr string) (*BASTPreviewData, error)
 	GenerateBAST(ctx context.Context, req *BASTGenerateRequest, userID uuid.UUID) (*BASTDocumentResponse, error)
 	ListBASTDocuments(ctx context.Context, limit int) ([]models.BASTDocument, error)
+
+	// Tracking
+	RecordDriverLocation(ctx context.Context, distributionID uuid.UUID, req *DriverLocationRequest, userID uuid.UUID) error
 }
 
 type service struct {
@@ -402,4 +405,31 @@ func (s *service) GenerateBAST(ctx context.Context, req *BASTGenerateRequest, us
 
 func (s *service) ListBASTDocuments(ctx context.Context, limit int) ([]models.BASTDocument, error) {
 	return s.repo.ListBASTDocuments(ctx, limit)
+}
+
+func (s *service) RecordDriverLocation(ctx context.Context, distributionID uuid.UUID, req *DriverLocationRequest, userID uuid.UUID) error {
+	dist, err := s.repo.GetDistributionByID(ctx, distributionID)
+	if err != nil {
+		return fmt.Errorf("distribution not found: %w", err)
+	}
+
+	if dist.Status != models.DistStatusInTransit {
+		return fmt.Errorf("cannot record location for distribution not in IN_TRANSIT status (current: %s)", dist.Status)
+	}
+
+	loc := &models.DriverLocationLog{
+		AuditModel: models.AuditModel{
+			CreatedBy: &userID,
+		},
+		DistributionID: distributionID,
+		Latitude:       req.Latitude,
+		Longitude:      req.Longitude,
+		RecordedAt:     time.Now(),
+	}
+
+	if err := s.repo.SaveDriverLocation(ctx, loc); err != nil {
+		return fmt.Errorf("failed to save driver location: %w", err)
+	}
+
+	return nil
 }

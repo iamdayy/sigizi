@@ -17,12 +17,18 @@ type UpsertNutritionInfoRequest struct {
 	Source          string    `json:"source"`
 }
 
+type SyncTKPIRequest struct {
+	ItemID   uuid.UUID `json:"item_id" binding:"required"`
+	TKPICode string    `json:"tkpi_code" binding:"required"`
+}
+
 type CreateMenuCycleRequest struct {
-	Name      string `json:"name" binding:"required"`
-	TotalDays int    `json:"total_days"` // defaults to 20
-	StartDate string `json:"start_date" binding:"required"` // YYYY-MM-DD
-	EndDate   string `json:"end_date" binding:"required"`   // YYYY-MM-DD
-	Notes     string `json:"notes"`
+	Name        string `json:"name" binding:"required"`
+	TargetGroup string `json:"target_group"`
+	TotalDays   int    `json:"total_days"` // defaults to 20
+	StartDate   string `json:"start_date" binding:"required"` // YYYY-MM-DD
+	EndDate     string `json:"end_date" binding:"required"`   // YYYY-MM-DD
+	Notes       string `json:"notes"`
 }
 
 type RecipeIngredientInput struct {

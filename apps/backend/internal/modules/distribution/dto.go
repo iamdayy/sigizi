@@ -106,3 +106,8 @@ type BASTDocumentResponse struct {
 	RecipientRepresentativeName string            `json:"recipient_representative_name"`
 	Status                      models.BASTStatus `json:"status"`
 }
+
+type DriverLocationRequest struct {
+	Latitude  float64 `json:"latitude" binding:"required"`
+	Longitude float64 `json:"longitude" binding:"required"`
+}

@@ -45,6 +45,7 @@ export default function MenuPlanningPage() {
   nextMonth.setDate(nextMonth.getDate() + 20);
 
   const [newCycleName, setNewCycleName] = useState('Siklus Menu Baru');
+  const [newCycleTargetGroup, setNewCycleTargetGroup] = useState('STUDENT');
   const [newCycleStartDate, setNewCycleStartDate] = useState(formatYMD(today));
   const [newCycleEndDate, setNewCycleEndDate] = useState(formatYMD(nextMonth));
   const [newCycleNotes, setNewCycleNotes] = useState('');
@@ -106,6 +107,7 @@ export default function MenuPlanningPage() {
     mutationFn: async () => {
       return apiClient.post('/menu/cycles', {
         name: newCycleName,
+        target_group: newCycleTargetGroup,
         total_days: 20,
         start_date: newCycleStartDate,
         end_date: newCycleEndDate,
@@ -275,11 +277,11 @@ export default function MenuPlanningPage() {
             <Flame className="w-5 h-5 text-orange-500" />
           </div>
           <div className="text-2xl font-bold text-brand-dark mt-2">
-            {summary?.average_calories_per_portion ? summary.average_calories_per_portion.toFixed(0) : '585'}{' '}
+            {summary?.average_calories_per_portion ? summary.average_calories_per_portion.toFixed(0) : '0'}{' '}
             <span className="text-sm font-normal text-slate-500">kkal / porsi</span>
           </div>
           <p className="text-xs text-orange-500 mt-1">
-            Target BGN: 500 - 700 kkal (25-30% AKG Harian)
+            Target BGN: {activeCycle?.target_group === 'GROUP_3B' ? '750 - 950 kkal' : '500 - 700 kkal'}
           </p>
         </Card>
 
@@ -289,11 +291,11 @@ export default function MenuPlanningPage() {
             <Zap className="w-5 h-5 text-brand-primary" />
           </div>
           <div className="text-2xl font-bold text-brand-dark mt-2">
-            {summary?.average_protein_grams ? summary.average_protein_grams.toFixed(1) : '24.5'}{' '}
+            {summary?.average_protein_grams ? summary.average_protein_grams.toFixed(1) : '0'}{' '}
             <span className="text-sm font-normal text-slate-500">gram / porsi</span>
           </div>
           <p className="text-xs text-brand-primary mt-1">
-            Standar BGN: Min. 15.0 gram protein hewani & nabati
+            Standar BGN: Min. {activeCycle?.target_group === 'GROUP_3B' ? '20.0' : '15.0'} gram protein
           </p>
         </Card>
 
@@ -419,10 +421,10 @@ export default function MenuPlanningPage() {
             <div>
               <div className="flex justify-between text-xs font-semibold mb-1">
                 <span className="text-slate-500">Total Protein</span>
-                <span className="text-brand-primary font-bold">{currentItem?.total_protein || 0} gram (Target: ≥15g)</span>
+                <span className="text-brand-primary font-bold">{currentItem?.total_protein || 0} gram (Target: ≥{activeCycle?.target_group === 'GROUP_3B' ? '20' : '15'}g)</span>
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-brand-primary h-full" style={{ width: `${Math.min(((currentItem?.total_protein || 0) / 15) * 100, 100)}%` }} />
+                <div className="bg-brand-primary h-full" style={{ width: `${Math.min(((currentItem?.total_protein || 0) / (activeCycle?.target_group === 'GROUP_3B' ? 20 : 15)) * 100, 100)}%` }} />
               </div>
             </div>
 
@@ -449,7 +451,7 @@ export default function MenuPlanningPage() {
 
           {currentItem ? (
             <div className={cn("p-3 border rounded-xl text-xs", currentItem.is_akg_compliant ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-amber-50 border-amber-100 text-amber-700")}>
-              {currentItem.is_akg_compliant ? "✓ Formula sajian ini memenuhi syarat Angka Kecukupan Gizi BGN dan siap dimasak pada jadwal distribusi." : "⚠ Sajian belum memenuhi target kalori (20-35% AKG) atau target protein minimum (15g)."}
+              {currentItem.is_akg_compliant ? "✓ Formula sajian ini memenuhi syarat Angka Kecukupan Gizi BGN dan siap dimasak pada jadwal distribusi." : `⚠ Sajian belum memenuhi target kalori atau target protein minimum (${activeCycle?.target_group === 'GROUP_3B' ? '20g' : '15g'}).`}
             </div>
           ) : (
             <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-500 text-center">
@@ -599,15 +601,28 @@ export default function MenuPlanningPage() {
         maxWidth="md"
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nama Siklus</label>
-            <input
-              type="text"
-              value={newCycleName}
-              onChange={(e) => setNewCycleName(e.target.value)}
-              className="w-full bg-brand-bg border border-slate-200 rounded-xl px-3 py-2 text-sm text-brand-dark font-semibold"
-              placeholder="Misal: Siklus September 2026"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nama Siklus</label>
+              <input
+                type="text"
+                value={newCycleName}
+                onChange={(e) => setNewCycleName(e.target.value)}
+                className="w-full bg-brand-bg border border-slate-200 rounded-xl px-3 py-2 text-sm text-brand-dark font-semibold"
+                placeholder="Misal: Siklus September 2026"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Target Penerima</label>
+              <select
+                value={newCycleTargetGroup}
+                onChange={(e) => setNewCycleTargetGroup(e.target.value)}
+                className="w-full bg-brand-bg border border-slate-200 rounded-xl px-3 py-2 text-sm text-brand-dark font-semibold"
+              >
+                <option value="STUDENT">Siswa (PAUD/SD/SMP/SMA)</option>
+                <option value="GROUP_3B">Kelompok 3B (Ibu Hamil/Balita)</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

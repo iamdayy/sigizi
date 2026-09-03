@@ -18,6 +18,8 @@ import (
 
 type Service interface {
 	Login(ctx context.Context, req *LoginRequest) (*AuthResponse, error)
+	GetSSORedirectURL() string
+	SSOLogin(ctx context.Context, req *SSOLoginRequest) (*AuthResponse, error)
 	RefreshToken(ctx context.Context, req *RefreshTokenRequest) (*AuthResponse, error)
 	Logout(ctx context.Context, refreshToken string) error
 	GetProfile(ctx context.Context, userID uuid.UUID) (*models.User, error)
@@ -33,12 +35,17 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
-	cfg  *config.Config
+	repo      Repository
+	cfg       *config.Config
+	ssoClient SSOClient
 }
 
 func NewService(repo Repository, cfg *config.Config) Service {
-	return &service{repo: repo, cfg: cfg}
+	return &service{
+		repo:      repo,
+		cfg:       cfg,
+		ssoClient: NewMockSSOClient(),
+	}
 }
 
 func (s *service) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, error) {
@@ -49,6 +56,50 @@ func (s *service) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, 
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		return nil, errors.New("invalid email or password")
+	}
+
+	return s.generateTokens(ctx, user)
+}
+
+func (s *service) GetSSORedirectURL() string {
+	return s.ssoClient.GetRedirectURL()
+}
+
+func (s *service) SSOLogin(ctx context.Context, req *SSOLoginRequest) (*AuthResponse, error) {
+	profile, err := s.ssoClient.ExchangeCode(ctx, req.Code)
+	if err != nil {
+		return nil, fmt.Errorf("SSO authentication failed: %w", err)
+	}
+
+	// Find user by SSOProviderID or Email
+	user, err := s.repo.GetUserByEmail(ctx, profile.Email)
+	if err != nil {
+		// User does not exist, auto-provision
+		systemID := uuid.Nil // Or some admin ID
+		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(uuid.New().String()), bcrypt.DefaultCost)
+		
+		user = &models.User{
+			AuditModel: models.AuditModel{
+				CreatedBy: &systemID,
+			},
+			Email:         profile.Email,
+			PasswordHash:  string(hashedPassword),
+			FullName:      profile.FullName,
+			Role:          profile.Role,
+			IsActive:      true,
+			SSOProviderID: profile.ProviderID,
+		}
+		
+		if err := s.repo.CreateUser(ctx, user); err != nil {
+			return nil, fmt.Errorf("failed to auto-provision SSO user: %w", err)
+		}
+	} else {
+		// User exists, update SSOProviderID if missing
+		if user.SSOProviderID == "" || user.SSOProviderID != profile.ProviderID {
+			user.SSOProviderID = profile.ProviderID
+			// Just save to db, ignoring error for now or properly updating
+			// A real app would do s.repo.UpdateUser(ctx, user)
+		}
 	}
 
 	return s.generateTokens(ctx, user)

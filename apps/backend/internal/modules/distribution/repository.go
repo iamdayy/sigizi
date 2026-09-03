@@ -29,6 +29,9 @@ type Repository interface {
 	CreateBASTDocument(ctx context.Context, doc *models.BASTDocument) error
 	ListBASTDocuments(ctx context.Context, limit int) ([]models.BASTDocument, error)
 	GetBASTDocumentByID(ctx context.Context, id uuid.UUID) (*models.BASTDocument, error)
+
+	// Tracking
+	SaveDriverLocation(ctx context.Context, loc *models.DriverLocationLog) error
 }
 
 type repository struct {
@@ -136,4 +139,8 @@ func (r *repository) GetBASTDocumentByID(ctx context.Context, id uuid.UUID) (*mo
 		return nil, err
 	}
 	return &doc, nil
+}
+
+func (r *repository) SaveDriverLocation(ctx context.Context, loc *models.DriverLocationLog) error {
+	return r.db.WithContext(ctx).Create(loc).Error
 }

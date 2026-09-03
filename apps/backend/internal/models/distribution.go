@@ -117,3 +117,11 @@ type BASTDocument struct {
 	RecipientRepresentativeName string             `gorm:"type:varchar(150);default:'Penerima Manfaat'" json:"recipient_representative_name"` // Kepsek / Bidan Desa / Pimpinan Ponpes
 	Status                      BASTStatus         `gorm:"type:varchar(32);not null;default:'GENERATED'" json:"status"`
 }
+
+type DriverLocationLog struct {
+	AuditModel
+	DistributionID uuid.UUID `gorm:"type:uuid;not null;index" json:"distribution_id"`
+	Latitude       float64   `gorm:"type:numeric(10,7);not null" json:"latitude"`
+	Longitude      float64   `gorm:"type:numeric(10,7);not null" json:"longitude"`
+	RecordedAt     time.Time `gorm:"type:timestamptz;not null;index" json:"recorded_at"`
+}

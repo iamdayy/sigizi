@@ -14,6 +14,8 @@ type Service interface {
 	// NutritionInfo
 	UpsertNutritionInfo(ctx context.Context, req *UpsertNutritionInfoRequest, userID uuid.UUID) (*models.NutritionInfo, error)
 	ListNutritionInfo(ctx context.Context) ([]models.NutritionInfo, error)
+	SearchTKPI(ctx context.Context, query string) ([]TKPIEntry, error)
+	SyncNutritionFromTKPI(ctx context.Context, req *SyncTKPIRequest, userID uuid.UUID) (*models.NutritionInfo, error)
 
 	// Menu Cycles
 	CreateMenuCycle(ctx context.Context, req *CreateMenuCycleRequest, userID uuid.UUID) (*models.MenuCycle, error)
@@ -29,11 +31,15 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo       Repository
+	tkpiClient TKPIClient
 }
 
 func NewService(repo Repository) Service {
-	return &service{repo: repo}
+	return &service{
+		repo:       repo,
+		tkpiClient: NewTKPIClient(),
+	}
 }
 
 func (s *service) UpsertNutritionInfo(ctx context.Context, req *UpsertNutritionInfoRequest, userID uuid.UUID) (*models.NutritionInfo, error) {
@@ -69,6 +75,28 @@ func (s *service) ListNutritionInfo(ctx context.Context) ([]models.NutritionInfo
 	return s.repo.ListNutritionInfo(ctx)
 }
 
+func (s *service) SearchTKPI(ctx context.Context, query string) ([]TKPIEntry, error) {
+	return s.tkpiClient.Search(ctx, query)
+}
+
+func (s *service) SyncNutritionFromTKPI(ctx context.Context, req *SyncTKPIRequest, userID uuid.UUID) (*models.NutritionInfo, error) {
+	entry, err := s.tkpiClient.GetByCode(ctx, req.TKPICode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch TKPI data: %w", err)
+	}
+
+	upsertReq := &UpsertNutritionInfoRequest{
+		ItemID:          req.ItemID,
+		CaloriesPer100g: entry.CaloriesPer100g,
+		ProteinPer100g:  entry.ProteinPer100g,
+		FatPer100g:      entry.FatPer100g,
+		CarbsPer100g:    entry.CarbsPer100g,
+		Source:          "TKPI Kemenkes RI (" + entry.Code + ")",
+	}
+
+	return s.UpsertNutritionInfo(ctx, upsertReq, userID)
+}
+
 func (s *service) CreateMenuCycle(ctx context.Context, req *CreateMenuCycleRequest, userID uuid.UUID) (*models.MenuCycle, error) {
 	startDate, err := time.Parse("2006-01-02", req.StartDate)
 	if err != nil {
@@ -89,16 +117,22 @@ func (s *service) CreateMenuCycle(ctx context.Context, req *CreateMenuCycleReque
 		totalDays = 20
 	}
 
+	targetGroup := models.TargetStudent
+	if req.TargetGroup == string(models.TargetGroup3B) {
+		targetGroup = models.TargetGroup3B
+	}
+
 	cycle := &models.MenuCycle{
 		AuditModel: models.AuditModel{
 			CreatedBy: &userID,
 		},
-		Name:      req.Name,
-		TotalDays: totalDays,
-		StartDate: startDate,
-		EndDate:   endDate,
-		IsActive:  false,
-		Notes:     req.Notes,
+		Name:        req.Name,
+		TargetGroup: targetGroup,
+		TotalDays:   totalDays,
+		StartDate:   startDate,
+		EndDate:     endDate,
+		IsActive:    false,
+		Notes:       req.Notes,
 	}
 
 	if err := s.repo.CreateMenuCycle(ctx, cycle); err != nil {
@@ -211,9 +245,23 @@ func (s *service) UpsertMenuItem(ctx context.Context, cycleID uuid.UUID, req *Up
 		totalCarbs += 10.0
 	}
 
-	// AKG benchmark: 2000 kkal/day. Target MBG lunch: 20% - 35% (400 - 700 kkal)
-	akgPercentage := (totalCalories / 2000.0) * 100.0
-	isCompliant := akgPercentage >= 20.0 && akgPercentage <= 35.0 && totalProtein >= 15.0
+	targetCalories := 2000.0 // Student base
+	if cycle.TargetGroup == models.TargetGroup3B {
+		targetCalories = 2500.0 // Higher base for pregnant/nursing mothers and toddlers average
+	}
+
+	akgPercentage := (totalCalories / targetCalories) * 100.0
+	
+	// Benchmark targets
+	// Target MBG lunch: 20% - 35% of daily AKG
+	isCompliant := false
+	if cycle.TargetGroup == models.TargetGroup3B {
+		// Group 3B requires around 800-900 kkal per package (target around 30-35% of 2500)
+		isCompliant = totalCalories >= 750.0 && totalCalories <= 950.0 && totalProtein >= 20.0
+	} else {
+		// Student requires around 400-700 kkal
+		isCompliant = akgPercentage >= 20.0 && akgPercentage <= 35.0 && totalProtein >= 15.0
+	}
 
 	menuItem := &models.MenuItem{
 		AuditModel: models.AuditModel{

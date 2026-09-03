@@ -29,6 +29,7 @@ type User struct {
 	Position     string   `gorm:"type:varchar(100)" json:"position,omitempty"`
 	NIK          string   `gorm:"type:varchar(20)" json:"nik,omitempty"`
 	IsActive     bool     `gorm:"type:boolean;not null;default:true" json:"is_active"`
+	SSOProviderID string   `gorm:"type:varchar(255)" json:"sso_provider_id,omitempty"` // For BGN SSO Identity
 }
 
 type RefreshToken struct {

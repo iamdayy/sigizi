@@ -25,6 +25,8 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup, authMW gin.HandlerFunc
 		// Nutrition Info
 		menuGroup.GET("/nutrition-info", h.ListNutritionInfo)
 		menuGroup.POST("/nutrition-info", middleware.RequireRole(models.RoleAdmin, models.RoleNutritionist, models.RoleHeadSPPG), h.UpsertNutritionInfo)
+		menuGroup.GET("/nutrition/tkpi", middleware.RequireRole(models.RoleAdmin, models.RoleNutritionist, models.RoleHeadSPPG), h.SearchTKPI)
+		menuGroup.POST("/nutrition/sync", middleware.RequireRole(models.RoleAdmin, models.RoleNutritionist, models.RoleHeadSPPG), h.SyncNutritionFromTKPI)
 
 		// Menu Cycles
 		menuGroup.GET("/cycles", h.ListMenuCycles)
@@ -61,6 +63,32 @@ func (h *Handler) UpsertNutritionInfo(c *gin.Context) {
 		return
 	}
 	pkg.Success(c, http.StatusOK, "Nutrition info saved successfully", info)
+}
+
+func (h *Handler) SearchTKPI(c *gin.Context) {
+	query := c.Query("q")
+	results, err := h.service.SearchTKPI(c.Request.Context(), query)
+	if err != nil {
+		pkg.Error(c, http.StatusInternalServerError, "Failed to search TKPI", err)
+		return
+	}
+	pkg.Success(c, http.StatusOK, "TKPI results retrieved", results)
+}
+
+func (h *Handler) SyncNutritionFromTKPI(c *gin.Context) {
+	var req SyncTKPIRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		pkg.Error(c, http.StatusBadRequest, "Invalid request payload", err)
+		return
+	}
+
+	userID, _ := c.Get("UserID")
+	info, err := h.service.SyncNutritionFromTKPI(c.Request.Context(), &req, userID.(uuid.UUID))
+	if err != nil {
+		pkg.Error(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+	pkg.Success(c, http.StatusOK, "Nutrition info synced successfully from TKPI", info)
 }
 
 func (h *Handler) ListMenuCycles(c *gin.Context) {

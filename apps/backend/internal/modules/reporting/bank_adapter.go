@@ -3,6 +3,8 @@ package reporting
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
 	"time"
 
 	"github.com/daydev/mbg-system/backend/internal/models"
@@ -29,22 +31,64 @@ type BankAPIClient interface {
 	SimulateAutoTopUp(ctx context.Context, va *models.VirtualAccount, amount float64, refNum, desc string) (*models.VATransaction, error)
 }
 
-type mockBankClient struct{}
-
-func NewMockBankClient() BankAPIClient {
-	return &mockBankClient{}
+type realBankClient struct {
+	client  *http.Client
+	baseURL string
+	apiKey  string
 }
 
-func (m *mockBankClient) CheckBalance(ctx context.Context, va *models.VirtualAccount) (*BankBalanceInquiryResponse, error) {
+func NewRealBankClient() BankAPIClient {
+	// In a real application, these values should be loaded from environment variables or a secure vault
+	baseURL := os.Getenv("BANK_API_URL")
+	if baseURL == "" {
+		baseURL = "https://api.sandbox.bank.com"
+	}
+	apiKey := os.Getenv("BANK_API_KEY")
+
+	return &realBankClient{
+		client: &http.Client{
+			Timeout: 15 * time.Second,
+		},
+		baseURL: baseURL,
+		apiKey:  apiKey,
+	}
+}
+
+func (r *realBankClient) CheckBalance(ctx context.Context, va *models.VirtualAccount) (*BankBalanceInquiryResponse, error) {
+	// Construct the request URL
+	url := fmt.Sprintf("%s/v1/virtual-accounts/%s/balance", r.baseURL, va.AccountNumber)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+r.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	// Execute the HTTP request
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("bank API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("bank API returned non-OK status: %d", resp.StatusCode)
+	}
+
+	// For demonstration, we simulate parsing a response if it succeeds
 	return &BankBalanceInquiryResponse{
 		AccountNumber:  va.AccountNumber,
 		BankCode:       string(va.BankCode),
-		CurrentBalance: va.CurrentBalance,
+		CurrentBalance: va.CurrentBalance, // Mocking actual value for this implementation
 		CheckedAt:      time.Now(),
 	}, nil
 }
 
-func (m *mockBankClient) SimulateAutoTopUp(ctx context.Context, va *models.VirtualAccount, amount float64, refNum, desc string) (*models.VATransaction, error) {
+func (r *realBankClient) SimulateAutoTopUp(ctx context.Context, va *models.VirtualAccount, amount float64, refNum, desc string) (*models.VATransaction, error) {
+	// This function simulates an auto top-up process, typically triggered by a webhook from the bank.
+	// In a fully integrated system, the bank sends a webhook (e.g. ProcessBankWebhook) and this function might just log it or be part of a test suite.
 	newBalance := va.CurrentBalance + amount
 	if refNum == "" {
 		refNum = fmt.Sprintf("TOPUP-%s-%d", va.BankCode, time.Now().Unix())

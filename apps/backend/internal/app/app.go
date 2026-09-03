@@ -132,7 +132,13 @@ func SetupApp(isServerless bool) *AppContainer {
 	// 8. Setup Background Cron Scheduler
 	// Only instantiate if not in serverless mode (Vercel will use Vercel Cron instead)
 	if !isServerless {
-		container.CronScheduler = scheduler.NewCronScheduler(cfg, finSvc)
+		sipgnSvc := reporting.NewSIPGNClient()
+		container.CronScheduler = scheduler.NewCronScheduler(cfg, db.DB, finSvc, sipgnSvc)
+		
+		// Setup and start IoT Listener for QC Module
+		iotListener := qc.NewIoTListener(qcSvc)
+		iotListener.Start()
+		// In a real application, you might want to add iotListener.Stop() to the shutdown sequence in main.go
 	}
 
 	return container

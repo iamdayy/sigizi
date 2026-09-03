@@ -26,6 +26,10 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup, authMW gin.HandlerFunc
 		authGroup.POST("/login", loginLimiter.Middleware(), h.Login)
 		authGroup.POST("/refresh", h.RefreshToken)
 		authGroup.POST("/logout", h.Logout)
+		
+		// SSO
+		authGroup.GET("/sso/bgn/login", h.GetSSORedirectURL)
+		authGroup.POST("/sso/bgn/callback", h.SSOLogin)
 	}
 
 	// Protected routes
@@ -68,6 +72,27 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	pkg.Success(c, http.StatusOK, "Login successful", resp)
+}
+
+func (h *Handler) GetSSORedirectURL(c *gin.Context) {
+	url := h.service.GetSSORedirectURL()
+	pkg.Success(c, http.StatusOK, "SSO Redirect URL generated", map[string]string{"url": url})
+}
+
+func (h *Handler) SSOLogin(c *gin.Context) {
+	var req SSOLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		pkg.Error(c, http.StatusBadRequest, "Invalid request payload", err)
+		return
+	}
+
+	resp, err := h.service.SSOLogin(c.Request.Context(), &req)
+	if err != nil {
+		pkg.Error(c, http.StatusUnauthorized, err.Error(), nil)
+		return
+	}
+
+	pkg.Success(c, http.StatusOK, "SSO Login successful", resp)
 }
 
 func (h *Handler) RefreshToken(c *gin.Context) {

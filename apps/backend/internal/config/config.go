@@ -14,7 +14,7 @@ type Config struct {
 	AppEnv   string
 	AppPort  string
 	Timezone string
-	
+
 	AllowedOrigins []string
 
 	// Database
@@ -26,10 +26,10 @@ type Config struct {
 	DBSSLMode  string
 
 	// JWT
-	JWTAccessSecret           string
-	JWTRefreshSecret          string
-	JWTAccessDurationMinutes  int
-	JWTRefreshDurationDays    int
+	JWTAccessSecret          string
+	JWTRefreshSecret         string
+	JWTAccessDurationMinutes int
+	JWTRefreshDurationDays   int
 
 	// Webhooks
 	BankWebhookSecret string
@@ -55,7 +55,7 @@ func LoadConfig() (*Config, error) {
 		AppPort:  getEnv("APP_PORT", "8080"),
 		Timezone: getEnv("TZ", "Asia/Jakarta"),
 
-		AllowedOrigins: strings.Split(getEnv("ALLOWED_ORIGINS", "https://production-frontend.com"), ","),
+		AllowedOrigins: strings.Split(getEnv("ALLOWED_ORIGINS", "http://localhost:4000"), ","),
 
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
@@ -69,7 +69,7 @@ func LoadConfig() (*Config, error) {
 		JWTAccessDurationMinutes: getEnvAsInt("JWT_ACCESS_DURATION_MINUTES", 15),
 		JWTRefreshDurationDays:   getEnvAsInt("JWT_REFRESH_DURATION_DAYS", 7),
 
-		BankWebhookSecret:        getEnv("BANK_WEBHOOK_SECRET", ""),
+		BankWebhookSecret: getEnv("BANK_WEBHOOK_SECRET", ""),
 
 		StorageDriver:     getEnv("STORAGE_DRIVER", "local"),
 		S3Endpoint:        getEnv("S3_ENDPOINT", ""),

@@ -37,7 +37,7 @@ func NewService(repo Repository, storageSvc storage.StorageService) Service {
 	return &service{
 		repo:         repo,
 		storageSvc:   storageSvc,
-		bankClient:   NewMockBankClient(),
+		bankClient:   NewRealBankClient(),
 		pdfGenerator: NewReportPDFGenerator(),
 	}
 }

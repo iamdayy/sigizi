@@ -27,6 +27,20 @@ export interface UpsertNutritionInfoRequest {
   source?: string;
 }
 
+export interface TKPIEntry {
+	code: string;
+	name: string;
+	calories_per_100g: number;
+	protein_per_100g: number;
+	fat_per_100g: number;
+	carbs_per_100g: number;
+}
+
+export interface SyncTKPIRequest {
+	item_id: string;
+	tkpi_code: string;
+}
+
 export interface MenuRecipeItem extends AuditModel {
   menu_item_id: string;
   item_id: string;
@@ -66,6 +80,7 @@ export interface UpsertMenuItemRequest {
 
 export interface MenuCycle extends AuditModel {
   name: string;
+  target_group: string;
   total_days: number;
   start_date: string;
   end_date: string;
@@ -79,6 +94,7 @@ export interface MenuCycle extends AuditModel {
 
 export interface CreateMenuCycleRequest {
   name: string;
+  target_group: string;
   total_days?: number;
   start_date: string;
   end_date: string;

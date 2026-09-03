@@ -22,20 +22,29 @@ type NutritionInfo struct {
 	Source          string    `gorm:"type:varchar(100);default:'TKPI Kemenkes RI'" json:"source"`    // Sumber data
 }
 
+// --- Menu Cycle Target Groups ---
+type TargetGroupType string
+
+const (
+	TargetStudent TargetGroupType = "STUDENT"  // PAUD, SD, SMP, SMA (500-700 kkal target)
+	TargetGroup3B TargetGroupType = "GROUP_3B" // Ibu Hamil, Menyusui, Balita (800-900 kkal target)
+)
+
 // --- Menu Cycle (20 Days Standard Cycle according to BGN guidelines) ---
 
 type MenuCycle struct {
 	AuditModel
-	Name         string     `gorm:"type:varchar(255);not null" json:"name"`
-	TotalDays    int        `gorm:"type:integer;not null;default:20" json:"total_days"`
-	StartDate    time.Time  `gorm:"type:date;not null" json:"start_date"`
-	EndDate      time.Time  `gorm:"type:date;not null" json:"end_date"`
-	IsActive     bool       `gorm:"type:boolean;not null;default:false;index" json:"is_active"`
-	ApprovedByID *uuid.UUID `gorm:"type:uuid" json:"approved_by_id,omitempty"` // Nutritionist / Kepala SPPG
-	ApprovedBy   *User      `gorm:"foreignKey:ApprovedByID" json:"approved_by,omitempty"`
-	ApprovedAt   *time.Time `gorm:"type:timestamptz" json:"approved_at,omitempty"`
-	Notes        string     `gorm:"type:text" json:"notes,omitempty"`
-	Items        []MenuItem `gorm:"foreignKey:MenuCycleID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
+	Name         string          `gorm:"type:varchar(255);not null" json:"name"`
+	TargetGroup  TargetGroupType `gorm:"type:varchar(32);not null;default:'STUDENT'" json:"target_group"`
+	TotalDays    int             `gorm:"type:integer;not null;default:20" json:"total_days"`
+	StartDate    time.Time       `gorm:"type:date;not null" json:"start_date"`
+	EndDate      time.Time       `gorm:"type:date;not null" json:"end_date"`
+	IsActive     bool            `gorm:"type:boolean;not null;default:false;index" json:"is_active"`
+	ApprovedByID *uuid.UUID      `gorm:"type:uuid" json:"approved_by_id,omitempty"` // Nutritionist / Kepala SPPG
+	ApprovedBy   *User           `gorm:"foreignKey:ApprovedByID" json:"approved_by,omitempty"`
+	ApprovedAt   *time.Time      `gorm:"type:timestamptz" json:"approved_at,omitempty"`
+	Notes        string          `gorm:"type:text" json:"notes,omitempty"`
+	Items        []MenuItem      `gorm:"foreignKey:MenuCycleID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
 }
 
 // --- Menu Item per Day (e.g. Day 1: Nasi Ayam Teriyaki + Sayur Capcay + Susu UHT) ---

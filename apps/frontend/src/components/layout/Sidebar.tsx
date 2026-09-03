@@ -124,31 +124,34 @@ export default function Sidebar() {
             const isActive = pathname === item.href;
 
             return (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center justify-between px-3.5 py-2.5 rounded-[12px] text-sm font-medium transition-all duration-150 group',
+                  'relative flex items-center justify-between px-3.5 py-2.5 rounded-[12px] text-sm font-medium transition-all duration-300 group',
                   isActive
-                    ? 'bg-brand-light/40 text-brand-primary font-semibold'
-                    : 'text-slate-500 hover:text-brand-primary hover:bg-slate-50'
+                    ? 'bg-brand-primary/10 text-brand-primary font-bold shadow-[inset_4px_0_0_0_rgba(2,132,199,1)]'
+                    : 'text-slate-500 hover:text-brand-primary hover:bg-brand-primary/5'
                 )}
               >
-                <div className="flex items-center space-x-3">
+                {isActive && (
+                  <div className="absolute inset-0 rounded-[12px] bg-brand-primary/5 blur-md" />
+                )}
+                <div className="relative flex items-center space-x-3 z-10">
                   <Icon
                     className={cn(
-                      'w-4 h-4 transition-colors',
-                      isActive ? 'text-brand-primary' : 'text-slate-400 group-hover:text-brand-primary'
+                      'w-4 h-4 transition-all duration-300',
+                      isActive ? 'text-brand-primary scale-110 drop-shadow-[0_0_8px_rgba(2,132,199,0.5)]' : 'text-slate-400 group-hover:text-brand-primary group-hover:scale-110'
                     )}
                   />
                   <span>{item.title}</span>
                 </div>
                 {item.badge && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-brand-light text-brand-primary">
+                  <span className="relative z-10 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-primary text-white shadow-[0_2px_10px_rgba(2,132,199,0.4)]">
                     {item.badge}
                   </span>
                 )}
-              </a>
+              </Link>
             );
           })
         )}

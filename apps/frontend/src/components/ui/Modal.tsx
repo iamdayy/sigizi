@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ModalProps {
   isOpen: boolean;
@@ -35,8 +36,6 @@ export default function Modal({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   const maxWidthClasses = {
     sm: 'max-w-sm',
     md: 'max-w-md',
@@ -47,38 +46,50 @@ export default function Modal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-
-      <div
-        className={cn(
-          'relative w-full bg-white border-none rounded-[24px] shadow-brand overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200',
-          maxWidthClasses[maxWidth]
-        )}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-slate-100 bg-white">
-          <div>
-            <h3 className="text-lg font-bold text-brand-dark tracking-tight">{title}</h3>
-            {description && (
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">{description}</p>
-            )}
-          </div>
-          <button
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={onClose}
-            className="text-slate-400 hover:text-brand-primary p-1 rounded-lg hover:bg-brand-bg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          />
 
-        {/* Content */}
-        <div className="p-6 max-h-[80vh] overflow-y-auto bg-white">{children}</div>
-      </div>
-    </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className={cn(
+              'relative w-full bg-white/95 backdrop-blur-md border border-white/40 rounded-[24px] shadow-brand overflow-hidden z-10',
+              maxWidthClasses[maxWidth]
+            )}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between p-6 border-b border-slate-100 bg-white/50">
+              <div>
+                <h3 className="text-lg font-bold text-brand-dark tracking-tight">{title}</h3>
+                {description && (
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{description}</p>
+                )}
+              </div>
+              <button
+                onClick={onClose}
+                className="text-slate-400 hover:text-brand-primary p-1 rounded-lg hover:bg-brand-primary/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 max-h-[80vh] overflow-y-auto">{children}</div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }

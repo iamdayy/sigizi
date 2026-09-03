@@ -14,6 +14,8 @@ import {
   ItemCategory,
   NutritionInfo,
   UpsertNutritionInfoRequest,
+  TKPIEntry,
+  SyncTKPIRequest,
 } from '@daydev/shared-types';
 import { formatIDR, formatDate } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
@@ -52,7 +54,10 @@ export default function InventoryPage() {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isStockOutModalOpen, setIsStockOutModalOpen] = useState(false);
   const [isNutritionModalOpen, setIsNutritionModalOpen] = useState(false);
+  const [isTKPIModalOpen, setIsTKPIModalOpen] = useState(false);
   const [selectedItemForBatch, setSelectedItemForBatch] = useState<string>('');
+  const [selectedItemForTKPI, setSelectedItemForTKPI] = useState<string>('');
+  const [tkpiSearchQuery, setTkpiSearchQuery] = useState<string>('');
   const [stockOutResult, setStockOutResult] = useState<StockOutResult | null>(null);
 
   // Form States
@@ -129,6 +134,17 @@ export default function InventoryPage() {
     },
   });
 
+  // 4. Fetch TKPI Search
+  const { data: tkpiResults, isLoading: isTkpiLoading } = useQuery<TKPIEntry[]>({
+    queryKey: ['tkpi-search', tkpiSearchQuery],
+    queryFn: async () => {
+      if (!tkpiSearchQuery || tkpiSearchQuery.length < 2) return [];
+      const res = await apiClient.get<ApiResponse<TKPIEntry[]>>(`/menu/nutrition/tkpi?q=${encodeURIComponent(tkpiSearchQuery)}`);
+      return res.data.data;
+    },
+    enabled: tkpiSearchQuery.length >= 2,
+  });
+
   // Mutations
   const createItemMutation = useMutation({
     mutationFn: async (payload: CreateItemRequest) => {
@@ -180,6 +196,18 @@ export default function InventoryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nutrition-info'] });
       setIsNutritionModalOpen(false);
+    },
+  });
+
+  const syncTKPIMutation = useMutation({
+    mutationFn: async (payload: SyncTKPIRequest) => {
+      const res = await apiClient.post<ApiResponse<any>>('/menu/nutrition/sync', payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nutrition-info'] });
+      setIsTKPIModalOpen(false);
+      setTkpiSearchQuery('');
     },
   });
 
@@ -571,26 +599,39 @@ export default function InventoryPage() {
                         {nut?.fiber_per_100g ? <div>Serat: {nut.fiber_per_100g}g</div> : null}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setNutritionForm({
-                              item_id: item.id,
-                              calories_per_100g: nut?.calories_per_100g || 0,
-                              protein_per_100g: nut?.protein_per_100g || 0,
-                              fat_per_100g: nut?.fat_per_100g || 0,
-                              carbs_per_100g: nut?.carbs_per_100g || 0,
-                              calcium_mg_100g: nut?.calcium_mg_100g || 0,
-                              iron_mg_100g: nut?.iron_mg_100g || 0,
-                              fiber_per_100g: nut?.fiber_per_100g || 0,
-                              source: nut?.source || 'TKPI / Standar BGN',
-                            });
-                            setIsNutritionModalOpen(true);
-                          }}
-                        >
-                          <Edit2 className="w-4 h-4 text-slate-500 hover:text-brand-primary" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedItemForTKPI(item.id);
+                              setIsTKPIModalOpen(true);
+                            }}
+                            title="Sinkronisasi dari TKPI"
+                          >
+                            <RefreshCw className="w-4 h-4 text-brand-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setNutritionForm({
+                                item_id: item.id,
+                                calories_per_100g: nut?.calories_per_100g || 0,
+                                protein_per_100g: nut?.protein_per_100g || 0,
+                                fat_per_100g: nut?.fat_per_100g || 0,
+                                carbs_per_100g: nut?.carbs_per_100g || 0,
+                                calcium_mg_100g: nut?.calcium_mg_100g || 0,
+                                iron_mg_100g: nut?.iron_mg_100g || 0,
+                                fiber_per_100g: nut?.fiber_per_100g || 0,
+                                source: nut?.source || 'TKPI / Standar BGN',
+                              });
+                              setIsNutritionModalOpen(true);
+                            }}
+                          >
+                            <Edit2 className="w-4 h-4 text-slate-500 hover:text-brand-primary" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -1146,6 +1187,67 @@ export default function InventoryPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* MODAL 5: SINKRONISASI TKPI */}
+      <Modal
+        isOpen={isTKPIModalOpen}
+        onClose={() => {
+          setIsTKPIModalOpen(false);
+          setTkpiSearchQuery('');
+        }}
+        title="Sinkronisasi Nutrisi dari TKPI Kemenkes"
+        description="Cari data pangan dari basis data TKPI untuk mengisi informasi nutrisi secara otomatis."
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Cari Kode atau Nama Bahan</label>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Ketik minimal 2 karakter (contoh: Beras)"
+                value={tkpiSearchQuery}
+                onChange={(e) => setTkpiSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-brand-dark focus:outline-none focus:border-brand-primary"
+              />
+            </div>
+          </div>
+
+          <div className="border border-slate-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+            {isTkpiLoading ? (
+              <div className="p-4 text-center text-xs text-slate-500">Mencari data TKPI...</div>
+            ) : tkpiResults && tkpiResults.length > 0 ? (
+              <div className="divide-y divide-slate-100">
+                {tkpiResults.map((res) => (
+                  <div key={res.code} className="p-3 hover:bg-slate-50 flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-brand-dark text-xs">{res.name}</div>
+                      <div className="text-[10px] text-slate-500">{res.code}</div>
+                    </div>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={syncTKPIMutation.isPending}
+                      onClick={() => {
+                        syncTKPIMutation.mutate({
+                          item_id: selectedItemForTKPI,
+                          tkpi_code: res.code,
+                        });
+                      }}
+                    >
+                      Pilih & Sinkronkan
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : tkpiSearchQuery.length >= 2 ? (
+              <div className="p-4 text-center text-xs text-slate-500">Hasil pencarian tidak ditemukan.</div>
+            ) : (
+              <div className="p-4 text-center text-xs text-slate-500">Mulai ketik untuk mencari.</div>
+            )}
+          </div>
+        </div>
       </Modal>
     </div>
   );
